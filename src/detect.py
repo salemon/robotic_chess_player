@@ -3,6 +3,7 @@ import geometry_msgs.msg
 from chessboard_pose_estimation import *
 from tf.transformations import euler_matrix,quaternion_matrix
 from transformation import Trans3D
+from numpy.linalg import inv
 
 class VisionDetector:
     
@@ -25,7 +26,7 @@ class VisionDetector:
         base2chessboard_tfmatrix = np.matmul(base2TCP_tfmatrix,np.matmul(TCP2camera_tfmatrix,camera2chessboard_tfmatrix))
         base2chessboard_pose = Trans3D.from_tfmatrix(base2chessboard_tfmatrix)
         return base2chessboard_pose
-
+        
     def chessboardPose(self, image, base2TCP_pose):
         camera2chessbaord_pose = self.pose_estimator.estimatePose(image)
         base2chessboard_pose = self.generatePose(camera2chessbaord_pose,base2TCP_pose)

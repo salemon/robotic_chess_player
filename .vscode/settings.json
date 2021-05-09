@@ -1,0 +1,8 @@
+{
+    "python.autoComplete.extraPaths": [
+        "/home/mingyu/cvbridge_build_ws/install/lib/python3/dist-packages",
+        "/home/mingyu/catkin_ws/devel/lib/python3/dist-packages",
+        "/home/mingyu/catkin_build_ws/devel/lib/python2.7/dist-packages",
+        "/opt/ros/melodic/lib/python2.7/dist-packages"
+    ]
+}

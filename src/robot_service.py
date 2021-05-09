@@ -25,17 +25,20 @@ class RobotService:
             return TaskPlanningResponse(feedback)
 
     def detectChessboard(self):
-        general_standby = [0.0,-45,-90,-70,90,0.0]
+        general_standby = [90,-135,90,-70,-90,0.0]
         manipulator = self.robot_manipulator
         robot_pose = manipulator.go_to_joint_state(general_standby)
         image = self.takeImage()
         base2chessboard_pose = self.vision_detector.chessboardPose(image,robot_pose)
-        camera_matrix = np.array([1353.131570942828, 0, 758.6928458558336, 0, 1353.743967167117, 557.9749908957598, 0, 0, 1]).reshape((3,3))
-        z = (camera_matrix[0][0]*(-0.18))/(400-camera_matrix[0][2])
-        above_mtx = base2chessboard_pose.to_tfmatrix().copy()
-        above_mtx[:,-1] = np.matmul(above_mtx,np.array([0.18,0.18,-z,1]))
-        above_pose = Trans3D.from_tfmatrix(above_mtx)
-        robot_pose = manipulator.go_cartesian(above_pose)
+        #camera_matrix = np.array([1353.131570942828, 0, 758.6928458558336, 0, 1353.743967167117, 557.9749908957598, 0, 0, 1]).reshape((3,3))
+        #z = (camera_matrix[0][0]*(-0.18))/(400-camera_matrix[0][2])
+        #above_mtx = base2chessboard_pose.to_tfmatrix().copy()
+        #above_mtx[:,-1] = np.matmul(above_mtx,np.array([0.0,0.0,0.0,1]))
+        #above_pose = Trans3D.from_tfmatrix(above_mtx)
+        #robot_pose = manipulator.go_cartesian(above_pose)
+        #above_mtx[:,-1] = np.matmul(above_mtx,np.array([0.0,0.07,0.0,1]))
+        #bove_pose = Trans3D.from_tfmatrix(above_mtx)
+        #robot_pose = manipulator.go_cartesian(above_pose)
         #calcuate the pose right above the chessboard 
         #move toward the that position return robot pose record
         #robot_pose = manipulator.go_to_pose(mtx)
@@ -46,7 +49,7 @@ class RobotService:
         #self.square_pose = 
         #self.vision_detector.chessboarbSquare
         #back to new standby position
-        
+    
         return 'Accomplished'
     def moveChess(self, request):
         ## decode the request
@@ -67,12 +70,10 @@ class RobotService:
         '''
 
     def takeImage(self):
-        img = cv2.imread('standby.jpg')
-        '''       
+    
         msg = rospy.wait_for_message('avt_camera_img', Image)
         bridge = CvBridge()
         img = bridge.imgmsg_to_cv2(msg, "bgr8")
-        '''
         return img
 
 if __name__ == "__main__":

@@ -163,10 +163,12 @@ class ChessboardPoseEstimation():
         camera_matrix,dist_coeff = self.camera_matrix,self.dist_coeff
         _, rotation_vector, translation_vector = cv2.solvePnP(
                 object_points, image_points, camera_matrix, dist_coeff)
+        translation_vector = np.array([translation_vector[2],-translation_vector[0],-translation_vector[1]])
         return rotation_vector,translation_vector
 
     def estimatePose(self,image):
         rotation_vector,translation_vector = self.estimate(image)
+        print(translation_vector)
         pose = Trans3D.from_angaxis(rotation_vector, tvec=translation_vector)
         return pose
         
