@@ -29,9 +29,13 @@ class RobotService:
             self.manipulator.goToJointState([90,-135,90,-70,-90,0.0])
             return TaskPlanningResponse('Robot arrive general standby position') 
         
-        elif msg.request == "detect chessboard":
+        elif msg.request == 'detect chessboard':
             feedback = self.detectChessboard()
             return TaskPlanningResponse(feedback)
+        
+        elif msg.request == 'chessboard state':
+            fen_string = self.chessboardState()
+            return TaskPlanningResponse(fen_string)
 
     def detectChessboard(self):
         self.manipulator.goToJointState([90,-135,90,-70,-90,0.0])
@@ -47,14 +51,14 @@ class RobotService:
         self.manipulator.goToJointState(self.standby)
         return "Detection accomplished"
 
-    def game_standby(self):
+    def __gameStandby(self):
         tvect = self.camera_pose.to_tvec()
         x, y = tvect[0] + 0.1333025, tvect[1]
         angle = np.arccos(x / norm(np.array([x,y]))) / np.pi * 180
         self.standby = [angle,-135,90,-70,-90,0.0]
         return None
 
-    def takeImagePose(self,base2chessboard_pose):
+    def __takeImagePose(self,base2chessboard_pose):
         z = (self.camera_matrix[0][0] * (-0.18)) / (400 - self.camera_matrix[0][2])
         tfmatrix = base2chessboard_pose.to_tfmatrix()
         tfmatrix[:,-1] = np.matmul(tfmatrix,np.array([0.18,0.18,-z,1]))
@@ -66,6 +70,21 @@ class RobotService:
         img = cv2.imread(file_name)
         return img
 
+    def chessboardState(self):
+        image = self.takeImage(file_name)
+        board = self.detector.chessboardState(image)
+        if self.board == None:
+            self.board = self.__humanCheck(board)
+        else:
+            self.board = self.__systemCheck(board)
+        return self.detector.chessboardTOFen(self.board)
+
+    def __humanCheck(self,board):
+        pass
+    def __systemCheck(self,board):
+        pass       
+    
+    
 if __name__ == "__main__":
     rospy.init_node('robot_system')
     robot = RobotService()
