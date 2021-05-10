@@ -39,6 +39,9 @@ class VisionDetector:
     def chessboardState(self,image):
         board = self.state_detector.detecting(image)
         return board
+
+    def __undistortImage(image):
+        pass
     
     def chessboardTOFen(self,board):
         fen = self.state_detector.boardTOFen(board)
