@@ -4,6 +4,7 @@ from chessboard_pose_estimation import *
 from tf.transformations import euler_matrix,quaternion_matrix
 from transformation import Trans3D
 from numpy.linalg import inv
+import cv2
 
 
 class VisionDetector:
@@ -24,20 +25,20 @@ class VisionDetector:
         camera2chessboard_tfmatrix = camera2chessbaord_pose.to_tfmatrix()
         TCP2camera_tfmatrix = self.TCP2camera_pose.to_tfmatrix()
         base2TCP_tfmatrix = base2TCP_pose.to_tfmatrix()
-        #base2chessboard_tfmatrix = np.matmul(base2TCP_tfmatrix,TCP2camera_tfmatrix)
         base2chessboard_tfmatrix = np.matmul(base2TCP_tfmatrix,np.matmul(TCP2camera_tfmatrix,camera2chessboard_tfmatrix))
         return Trans3D.from_tfmatrix(base2chessboard_tfmatrix)
 
     def chessboardPose(self, image, base2TCP_pose):
         camera2chessbaord_pose = self.pose_estimator.estimatePose(image)
-        base2chessboard_pose = self.__baseToChessboard(camera2chessbaord_pose,base2TCP_pose)
-        return base2chessboard_pose
+        return self.__baseToChessboard(camera2chessbaord_pose,base2TCP_pose)
         
     
     def chessboardSquare(self,image,base2TCP_pose):
-        square_dict,camera2chessbaord_pose = self.pose_estimator.estimateSquare(image)
-        base2chessboard_pose = self.generatePose(camera2chessboard_tfmatrix)
-        self.square_dict = square_dict
-        return base2chessboard_pose
+        self.square_dict,camera2chessbaord_pose = self.pose_estimator.estimateSquare(image)
+        crop = image[self.square_dict['H1'][0]:self.square_dict['H1'][1],self.square_dict['H1'][2]:self.square_dict['H1'][3]]
+        cv2.imshow('h1',crop)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+        return self.__baseToChessboard(camera2chessbaord_pose,base2TCP_pose)
         
 

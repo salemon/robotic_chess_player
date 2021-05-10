@@ -175,6 +175,7 @@ class ChessboardPoseEstimation():
     def squarePixel(alf,num,rot_vect,trans_vect,camera_matrix):
         def constant(value):
             return 4.082*(value)**2 - 36.735*(value) + 82.653
+        unit_length = 0.045
         square_ul,square_lr  = [alf*unit_length, (num-1)*unit_length, 0],[(alf+1)*unit_length, (num)*unit_length, 0]
         square_p = np.float32([square_ul,square_lr]).reshape(-1,3)
         imgpts,_ = cv2.projectPoints(square_p, rot_vect, trans_vect, camera_matrix, np.zeros((5,)))
@@ -192,7 +193,7 @@ class ChessboardPoseEstimation():
         for world,alf in alf_dict.items():
             for num in range(1,9):
                 key = world + str(num)
-                square = squarePixel(alf,num,rot_vect,trans_vect,self.camera_matrix)
+                square = self.squarePixel(alf,num,rot_vect,trans_vect,self.camera_matrix)
                 square_dict[key] = square
         pose = Trans3D.from_angaxis(rot_vect, tvec=trans_vect)
         return square_dict,pose

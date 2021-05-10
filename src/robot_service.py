@@ -38,16 +38,19 @@ class RobotService:
         image = self.takeImage('standby.jpg')
         base2TCP_pose = self.manipulator.robotCurrentPose()
         base2chessboard_pose = self.detector.chessboardPose(image,base2TCP_pose)
-        self.camera_pose = self.takeImagePose(base2chessboard_pose)
+        self.takeImagePose(base2chessboard_pose)
         self.manipulator.goStraightToPose(self.camera_pose)
-        return "arrive"
+        image = self.takeImage('217.jpg')
+        self.base2chessboard_pose = self.detector.chessboardSquare(image, base2TCP_pose)
+        return "Detection accomplished"
 
     def takeImagePose(self,base2chessboard_pose):
         z = (self.camera_matrix[0][0] * (-0.18)) / (400 - self.camera_matrix[0][2])
         tfmatrix = base2chessboard_pose.to_tfmatrix()
         tfmatrix[:,-1] = np.matmul(tfmatrix,np.array([0.18,0.18,-z,1]))
         tfmatrix = np.matmul(tfmatrix,inv(self.TCP2camera_pose.to_tfmatrix()))
-        return Trans3D.from_tfmatrix(tfmatrix)
+        self.camera_pose = Trans3D.from_tfmatrix(tfmatrix)
+        return self.camera_matrix
 
     def takeImage(self,file_name):
         img = cv2.imread(file_name)
