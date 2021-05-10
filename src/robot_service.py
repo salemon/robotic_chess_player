@@ -23,6 +23,8 @@ class RobotService:
         cam_trans = np.array([0.001514679603077936, -0.08438965970995699, 0.09423193500454446])
         self.TCP2camera_pose = Trans3D.from_quaternion(cam_rot, cam_trans)
 
+        self.board = None
+
     def serviceHandler(self,msg):
         rospy.loginfo("Request: {}".format(msg.request))
         if msg.request == "to general standby":
@@ -36,6 +38,11 @@ class RobotService:
         elif msg.request == 'chessboard state':
             fen_string = self.chessboardState()
             return TaskPlanningResponse(fen_string)
+
+        elif msg.request[:4] == 'step':
+            detail = msg.request.split(':')
+            self.carryOutOrder(detail)
+            return TaskPlanningResponse('Done')
 
     def detectChessboard(self):
         self.manipulator.goToJointState([90,-135,90,-70,-90,0.0])
@@ -64,7 +71,7 @@ class RobotService:
         tfmatrix[:,-1] = np.matmul(tfmatrix,np.array([0.18,0.18,-z,1]))
         tfmatrix = np.matmul(tfmatrix,inv(self.TCP2camera_pose.to_tfmatrix()))
         self.camera_pose = Trans3D.from_tfmatrix(tfmatrix)
-        return self.camera_matrix
+        return self.camera_pose
 
     def takeImage(self,file_name):
         img = cv2.imread(file_name)
@@ -84,7 +91,39 @@ class RobotService:
     def __systemCheck(self,board):
         pass       
     
+    def carryOutOrder(self,detail):
+        square,action = detail.split(',')
+        if action == 'move':
+            pass
+        elif action == 'capturing':
+            pass
+        else:
+            pass
     
+    def __criticalPoints(self,square,action,raiseup):
+            alf_dict = {'H':0,'G':1,'F':2,'E':3,'D':4,'C':5,'B':6,'A':7}
+            alf,num = alf_dict[sq[0]],sq[1]
+            piece_dict = {'k':0.065,'q':0.065,'b':0.04,'n':0.037,'r':0.037,'p':0.03}
+            pp = - (piece_dict[(self.board[alf][num]).lower()] + gripper_high)
+            if action == 'pick': pass
+            else : hight + 0.005
+            pp_vect = np.array([(alf+1) * unit_length / 2, (num) * unit_length / 2, pp, 1])
+            tfmatrix = self.base2chessboard_pose.to_tfmatrix()
+            tfmatrix[:,-1] = np.matmul(tfmatrix,vect)
+            return Trans3D.from_tfmatrix(tfmatrix)
+
+    def __movePiece(self,start,end):
+        gripper_high
+        piece_dict = {'k':0.065,'q':0.065,'b':0.04,'n':0.037,'r':0.037,'p':0.03}
+        pickup = - (piece_dict[(self.board[alf][num]).lower()] + gripper_high)
+        dropoff = pickup + 0.005
+        if no piece in between
+        if piece in between
+        raise up high
+        drop off high 
+        start = self.__squareToTfmatrix(start)
+        end = self.__squareToTfmatrix(end)
+        self.manipulator.pickPlace(start,end)
 if __name__ == "__main__":
     rospy.init_node('robot_system')
     robot = RobotService()
