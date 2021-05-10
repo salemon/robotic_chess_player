@@ -5,7 +5,7 @@ import rospy
 from sensor_msgs.msg import Image
 from robotic_chess_player.srv import TaskPlanning,TaskPlanningResponse
 import numpy as np
-from numpy.linalg import inv
+from numpy.linalg import inv,norm
 from robot_manipulator import *
 from vision_detector import *
 from transformation import Trans3D
@@ -35,6 +35,7 @@ class RobotService:
 
     def detectChessboard(self):
         self.manipulator.goToJointState([90,-135,90,-70,-90,0.0])
+        current = self.manipulator.robotCurrentPose()
         image = self.takeImage('standby.jpg')
         base2TCP_pose = self.manipulator.robotCurrentPose()
         base2chessboard_pose = self.detector.chessboardPose(image,base2TCP_pose)
@@ -42,7 +43,16 @@ class RobotService:
         self.manipulator.goStraightToPose(self.camera_pose)
         image = self.takeImage('217.jpg')
         self.base2chessboard_pose = self.detector.chessboardSquare(image, base2TCP_pose)
+        self.game_standby()
+        self.manipulator.goToJointState(self.standby)
         return "Detection accomplished"
+
+    def game_standby(self):
+        tvect = self.camera_pose.to_tvec()
+        x, y = tvect[0] + 0.1333025, tvect[1]
+        angle = np.arccos(x / norm(np.array([x,y]))) / np.pi * 180
+        self.standby = [angle,-135,90,-70,-90,0.0]
+        return None
 
     def takeImagePose(self,base2chessboard_pose):
         z = (self.camera_matrix[0][0] * (-0.18)) / (400 - self.camera_matrix[0][2])
