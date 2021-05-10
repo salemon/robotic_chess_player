@@ -35,10 +35,6 @@ class VisionDetector:
     
     def chessboardSquare(self,image,base2TCP_pose):
         self.square_dict,camera2chessbaord_pose = self.pose_estimator.estimateSquare(image)
-        crop = image[self.square_dict['H1'][0]:self.square_dict['H1'][1],self.square_dict['H1'][2]:self.square_dict['H1'][3]]
-        cv2.imshow('h1',crop)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
         return self.__baseToChessboard(camera2chessbaord_pose,base2TCP_pose)
         
 
