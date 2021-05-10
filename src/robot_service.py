@@ -17,7 +17,12 @@ class RobotService:
         self.server = rospy.Service('robot_service',TaskPlanning,self.serviceHandler)
         self.manipulator = RobotManipulator()
         self.detector = VisionDetector()
-    
+
+        self.camera_matrix = np.array([1353.131570942828, 0, 758.6928458558336, 0, 1353.743967167117, 557.9749908957598, 0, 0, 1]).reshape((3,3))
+        cam_rot = np.array([-0.00285051, -0.000809386, 0.00617178, 0.999977])
+        cam_trans = np.array([0.001514679603077936, -0.08438965970995699, 0.09423193500454446])
+        self.TCP2camera_pose = Trans3D.from_quaternion(cam_rot, cam_trans)
+
     def serviceHandler(self,msg):
         rospy.loginfo("Request: {}".format(msg.request))
         if msg.request == "to general standby":
@@ -33,20 +38,16 @@ class RobotService:
         image = self.takeImage('standby.jpg')
         base2TCP_pose = self.manipulator.robotCurrentPose()
         base2chessboard_pose = self.detector.chessboardPose(image,base2TCP_pose)
-        print(base2chessboard_pose.to_string())
-        '''
-        above_mtx = base2TCP_pose.to_tfmatrix().copy()
-        above_mtx[:,-1] = np.matmul(above_mtx,np.array([0.0,0.0,0.0,1]))
-        above_pose = Trans3D.from_tfmatrix(above_mtx)
-        self.manipulator.goStraightToPose(above_pose)
-        above_mtx = base2TCP_pose.to_tfmatrix().copy()
-        above_mtx[:,-1] = np.matmul(above_mtx,np.array([0.0,0.1,0.0,1]))
-        above_pose = Trans3D.from_tfmatrix(above_mtx)
-        self.manipulator.goStraightToPose(above_pose)
-        '''
-        self.manipulator.goStraightToPose(base2chessboard_pose)
+        self.camera_pose = self.takeImagePose(base2chessboard_pose)
+        self.manipulator.goStraightToPose(self.camera_pose)
         return "arrive"
 
+    def takeImagePose(self,base2chessboard_pose):
+        z = (self.camera_matrix[0][0] * (-0.18)) / (400 - self.camera_matrix[0][2])
+        tfmatrix = base2chessboard_pose.to_tfmatrix()
+        tfmatrix[:,-1] = np.matmul(tfmatrix,np.array([0.18,0.18,-z,1]))
+        tfmatrix = np.matmul(tfmatrix,inv(self.TCP2camera_pose.to_tfmatrix()))
+        return Trans3D.from_tfmatrix(tfmatrix)
 
     def takeImage(self,file_name):
         img = cv2.imread(file_name)
