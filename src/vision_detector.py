@@ -5,6 +5,7 @@ from tf.transformations import euler_matrix,quaternion_matrix
 from transformation import Trans3D
 from numpy.linalg import inv
 
+
 class VisionDetector:
     
 
@@ -19,18 +20,19 @@ class VisionDetector:
         self.TCP2camera_pose = Trans3D.from_quaternion(cam_rot, cam_trans)
         pass
     
-    def generatePose(self,camera2chessbaord_pose,base2TCP_pose):
+    def __baseToChessboard(self,camera2chessbaord_pose,base2TCP_pose):
         camera2chessboard_tfmatrix = camera2chessbaord_pose.to_tfmatrix()
         TCP2camera_tfmatrix = self.TCP2camera_pose.to_tfmatrix()
         base2TCP_tfmatrix = base2TCP_pose.to_tfmatrix()
+        #base2chessboard_tfmatrix = np.matmul(base2TCP_tfmatrix,TCP2camera_tfmatrix)
         base2chessboard_tfmatrix = np.matmul(base2TCP_tfmatrix,np.matmul(TCP2camera_tfmatrix,camera2chessboard_tfmatrix))
-        base2chessboard_pose = Trans3D.from_tfmatrix(base2chessboard_tfmatrix)
-        return base2chessboard_pose
-        
+        return Trans3D.from_tfmatrix(base2chessboard_tfmatrix)
+
     def chessboardPose(self, image, base2TCP_pose):
         camera2chessbaord_pose = self.pose_estimator.estimatePose(image)
-        base2chessboard_pose = self.generatePose(camera2chessbaord_pose,base2TCP_pose)
+        base2chessboard_pose = self.__baseToChessboard(camera2chessbaord_pose,base2TCP_pose)
         return base2chessboard_pose
+        
     
     def chessboardSquare(self,image,base2TCP_pose):
         square_dict,camera2chessbaord_pose = self.pose_estimator.estimateSquare(image)
