@@ -34,7 +34,7 @@ class VisionDetector:
     def chessboardSquare(self,image,base2TCP_pose):
         self.square_dict,camera2chessbaord_pose = self.pose_estimator.estimateSquare(image)
         #self.SquareDict(square_dict) self.square_dict need to delete
-        return self.__baseToChessboard(camera2chessbaord_pose,base2TCP_pose)
+        return self.__baseToChessboard(camera2chessbaord_pose,base2TCP_pose),self.square_dict
         
     def chessboardState(self,image):
         board = self.state_detector.detecting(image)

@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import os
 import cv2
 from cv_bridge import CvBridge
 import rospy
@@ -10,12 +11,12 @@ from robot_manipulator import *
 from vision_detector import *
 from transformation import Trans3D
 
-#message from ai node would have a length 4 need to processed
+#gripper height gripper service import os
 class RobotService:
     
     def __init__(self):
 
-        self.server = rospy.Service('robot_service',TaskPlanning,self.serviceHandler)
+        self.server = rospy.Service('auto_service',TaskPlanning,self.serviceHandler)
         self.manipulator = RobotManipulator()
         self.detector = VisionDetector()
 
@@ -25,22 +26,14 @@ class RobotService:
         self.TCP2camera_pose = Trans3D.from_quaternion(cam_rot, cam_trans)
 
         self.board = None
-        self.base2chessboard_pose = Trans3D.from_quaternion(np.array([0.97388685, -0.00873453, -0.00596293, -0.22678747]),np.array([-0.29340047, 0.61994829, 0.18277942]))
     def serviceHandler(self,msg):
-        rospy.loginfo("Request: {}".format(msg.request))
-        if msg.request == "to general standby":
-            self.manipulator.goToJointState([90,-135,90,-70,-90,0.0])
-            return TaskPlanningResponse('Robot arrive general standby position') 
+        rospy.loginfo("Request: {}".format(msg.request)) 
         
-        elif msg.request == 'detect chessboard':
+        if msg.request == 'detect chessboard':
             feedback = self.detectChessboard()
             return TaskPlanningResponse(feedback)
-        
-        elif msg.request == 'chessboard state':
-            fen_string,self.chessboard = self.chessboardState()
-            return TaskPlanningResponse(fen_string)
 
-        elif msg.request[:4] == 'step':
+        elif msg.request[:4] == 'auto':
             detail = msg.request.split(':')
             self.carryOutOrder(detail[1])
             return TaskPlanningResponse('Done')
@@ -54,7 +47,7 @@ class RobotService:
         self.manipulator.goStraightToPose([self.camera_pose])
         base2TCP_pose = self.manipulator.robotCurrentPose()
         image = self.takeImage('217.jpg')
-        self.base2chessboard_pose = self.detector.chessboardSquare(image, base2TCP_pose)
+        self.base2chessboard_pose,self.square_dict = self.detector.chessboardSquare(image, base2TCP_pose)
         self.__gameStandby()
         self.manipulator.goToJointState(self.standby)
         return "Detection accomplished"
@@ -77,54 +70,49 @@ class RobotService:
     def takeImage(self,file_name):
         img = cv2.imread(file_name)
         return img
-
-    def chessboardState(self):
-        image = self.takeImage(file_name)
-        board = self.detector.chessboardState(image)
-        if self.board == None:
-            self.board = self.__humanCheck(board)
-        else:
-            self.board = self.__systemCheck(board)
-        return self.detector.chessboardTOFen(self.board)
-
-    def __humanCheck(self,board):
-        pass
-    def __systemCheck(self,board):
-        pass       
     
-    def carryOutOrder(self,detail):
-        square,capturing,castling = detail.split(',')
-        start, end = self.squareToIndex(square[:2]), self.squareToIndex(square[2:])
+    def carryOutOrder(self,piece):
+        #alf_dict = {'h':0,'g':1,'f':2,'e':3,'d':4,'c':5,'b':6,'a':7}
+        parent_dir = os.getcwd()
+        path = os.path.join(parent_dir, piece)
+        os.mkdir(path)
+        alf_dict = {'h':0,'g':1,}
         pickup_dict = {'k':0.065,'q':0.065,'b':0.04,'n':0.037,'r':0.037,'p':0.03}
-        if capturing == 'yes':
-            pass
-        elif castling == 'yes':
-            pass
-        else:
-            #piece = (self.chessboard[start[0]][start[1]]).lower()
-            piece = 'k'
-            pickup_height = pickup_dict[piece]
-            if piece != 'n':
-                raiseup_height = pickup_height + 0.007
-            if piece == 'n':
-                raiseup_height = self.raiseUpKnight(start,end) + pickup_height
-            waypoints = self.pickAndPlaceWaypoints(start,end,pickup_height,raiseup_height)
-            self.manipulator.goStraightToPose(waypoints)
+        pickup_height = pickup_dict[piece]
+        raiseup_height = pickup_height + 0.007
+        for world,alf in alf_dict.items():
+            if alf != 0:
+                start1, end1 = end1, (0,alf)
+                self.pickAndPlace(start1,end1,pickup_height,raiseup_height)
+                start2, end2 = end2, (1,alf)
+                self.pickAndPlace(start2,end2,pickup_height,raiseup_height)
+                self.manipulator.goStraightToPose([self.camera_pose])
+            else:
+                self.manipulator.goStraightToPose([self.camera_pose])
+            for num in range(0,3):
+                start1, end1 = (2*num+1,alf), (2*num+3,alf)
+                self.pickAndPlace(start1,end1,pickup_height,raiseup_height)
+                start2, end2 = (2*num,alf), (2*num+2,alf)
+                self.pickAndPlace(start2,end2,pickup_height,raiseup_height)
+                self.manipulator.goStraightToPose([self.camera_pose])
         return 'Finished'
-    
+
+    def pickAndPlace(self,start,end,pickup_height,raiseup_height):
+        waypoints = self.pickAndPlaceWaypoints(start,end,pickup_height,raiseup_height)
+        self.manipulator.goStraightToPose(waypoints)
+
+    def crop_image(self,square,path):
+        image = self.takeImage('217.jpg')
+        p = self.square_dict[square]
+        square_img = image[p[0]:p[1],p[2]:p[3]]
+        name = os.path.join(path, '{}.jpg'.format(square))
+        cv2.imwrite(name,square_img)
+        
+
     def squareToIndex(self,square):
         alf_dict = {'h':0,'g':1,'f':2,'e':3,'d':4,'c':5,'b':6,'a':7}
         return (int(square[1])-1, alf_dict[square[0]])
 
-    def raiseUpKnight(self,start,end):
-        piece_height = {'k':0.105,'q':0.095,'b':0.08,'n':0.06,'r':0.06,'p':0.05,'_':0.007}
-        row = [start[0], end[0]]
-        col = [start[1], end[1]]
-        chessboard = self.chessboard.copy()
-        chessboard[start[0]][start[1]] = '_'
-        passing_area = chessboard[min(row):max(row)+1,min(col):max(col)+1]
-        return max([piece_height[i.lower()] for i in passing_area.reshape((passing_area.size,))])
-    
     def waypoint_generator(self,square,height):
         unit_length = 0.045/2
         tfmatrix = self.base2chessboard_pose.to_tfmatrix().copy()
