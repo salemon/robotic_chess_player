@@ -7,13 +7,13 @@ from std_msgs.msg import String
 from transformation import Trans3D
 import moveit_commander
 import moveit_msgs.msg
-'''
+
 rospack = rospkg.RosPack()
-path = rospack.get_path('execution_node')
+path = rospack.get_path('robotic_chess_player')
 gripper_path = path+'/include/robotiq_hande_ros_driver'
 sys.path.append(gripper_path)
 from robotiq_hande_ros_driver.srv import gripper_service
-'''
+
 
 class RobotManipulator(object):
     def __init__(self):
@@ -38,20 +38,21 @@ class RobotManipulator(object):
         pose = Trans3D.from_PoseStamped(pose_msg)
         return pose
 
-    def goStraightToPose(self,waypoints):
-        move_group = self.move_group
-        waypoints = [point.to_Pose() for point in waypoints]
-        (plan, fraction) = move_group.compute_cartesian_path(waypoints,0.01,0.0)#(waypoints,eef_stpe,jump_threshold)
-        move_group.execute(plan, wait=True)
+    def goStraightToPose(self,pose):
+        waypoints = [pose.to_Pose()]
+        (plan, fraction) = self.move_group.compute_cartesian_path(waypoints,0.001,0.0)#(waypoints,eef_stpe,jump_threshold)
+        self.move_group.execute(plan, wait=True)
         return None
-        '''
-    
-        (plan, fraction) = move_group.compute_cartesian_path(waypoints,0.01,0.0)#(waypoints,eef_stpe,jump_threshold)
-        move_group.execute(plan, wait=True)
-        pose_msg = move_group.get_current_pose()
-        pose = Trans3D.from_PoseStamped(pose_msg)
-        return pose
-        '''
+
+    def executePlan(self,waypoints):
+        for pose in waypoints:
+            if type(pose)!= int:
+                self.goStraightToPose(pose)
+            else:
+
+                if pose == 0: self.gripper_srv(0)
+                else: self.gripper_srv(1)
+
     
 if __name__ == "__main__":
     rospy.init_node('robot_execute_command')
