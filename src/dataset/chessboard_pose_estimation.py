@@ -131,10 +131,12 @@ class ChessboardPoseEstimation():
         for i in pair:
             col,row = i.ravel()
             candi_gray = cv2.cvtColor(self.crop_img(self.img,col,row,r = 150),cv2.COLOR_BGR2GRAY)
-            mean_intensity = self.histogram_mean(candi_gray)
-            if mean_intensity < brightness:
-                brightness = mean_intensity
-                origin = np.array([col,row])
+            if type(candi_gray) == type(None):continue 
+            else:    
+                mean_intensity = self.histogram_mean(candi_gray)
+                if mean_intensity < brightness:
+                    brightness = mean_intensity
+                    origin = np.array([col,row])
         corner, imageP = self.pClosest(inner_points,origin)
         return corner,imageP
         

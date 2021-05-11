@@ -29,7 +29,20 @@ class RobotService:
         self.img_sub = rospy.Subscriber('avt_camera_img', Image, self.image_callback)
         self.lastest_img = None
         self.img_received = False 
+        self.bridge = CvBridge()
+
+    def serviceHandler(self,msg):
+        rospy.loginfo("Request: {}".format(msg.request)) 
         
+        if msg.request == 'detect chessboard':
+            feedback = self.detectChessboard()
+            return TaskPlanningResponse(feedback)
+
+        elif msg.request[:4] == 'auto':
+            detail = msg.request.split(':')
+            self.carryOutOrder(detail[1])
+            return TaskPlanningResponse('Done')
+
     def image_callback(self, msg):
         try:
             img = self.bridge.imgmsg_to_cv2(msg, "bgr8")
@@ -43,18 +56,6 @@ class RobotService:
         while(not self.img_received):
             continue
         self.img_received = False
-
-    def serviceHandler(self,msg):
-        rospy.loginfo("Request: {}".format(msg.request)) 
-        
-        if msg.request == 'detect chessboard':
-            feedback = self.detectChessboard()
-            return TaskPlanningResponse(feedback)
-
-        elif msg.request[:4] == 'auto':
-            detail = msg.request.split(':')
-            self.carryOutOrder(detail[1])
-            return TaskPlanningResponse('Done')
 
     def detectChessboard(self):
         self.manipulator.goToJointState([90,-135,90,-70,-90,0.0])
@@ -128,7 +129,6 @@ class RobotService:
             name = os.path.join(path, '{}.jpg'.format(sq))
             cv2.imwrite(name,square_img)
         
-
     def squareToIndex(self,square):
         alf_dict = {'h':0,'g':1,'f':2,'e':3,'d':4,'c':5,'b':6,'a':7}
         return (int(square[1])-1, alf_dict[square[0]])
@@ -147,41 +147,6 @@ class RobotService:
         dropoff = self.waypoint_generator(end, pickup_height-0.003)
         waypoints = [pickup, start_raiseup, 0, end_raiseup, dropoff, 1]
         return waypoints
-    '''
-    def pickAndPlace(self,start,end,pickup_height,raiseup_height):
-        pickup_dict = {'k':0.065,'q':0.065,'b':0.04,'n':0.036,'r':0.036,'p':0.03}
-        piece = (self.chessboard[start[0]][start[1]]).lower()
-        pickup_height = pickup_dict[piece]
-        if piece != 'n' and not capturing:
-            raiseup_height = pickup_height + 0.007
-        elif piece == 'n' and not capturing:
-            raiseup_height = self.raiseUpKnight(start,end)
-
-    def __criticalPoints(self,square,action,raiseup):
-            alf_dict = {'H':0,'G':1,'F':2,'E':3,'D':4,'C':5,'B':6,'A':7}
-            alf,num = alf_dict[sq[0]],sq[1]
-            piece_dict = {'k':0.065,'q':0.065,'b':0.04,'n':0.037,'r':0.037,'p':0.03}
-            pp = - (piece_dict[(self.board[alf][num]).lower()] + gripper_high)
-            if action == 'pick': pass
-            else : hight + 0.005
-            pp_vect = np.array([(alf+1) * unit_length / 2, (num) * unit_length / 2, pp, 1])
-            tfmatrix = self.base2chessboard_pose.to_tfmatrix()
-            tfmatrix[:,-1] = np.matmul(tfmatrix,vect)
-            return Trans3D.from_tfmatrix(tfmatrix)
-    
-    def __movePiece(self,start,end):
-        gripper_high
-        piece_dict = {'k':0.065,'q':0.065,'b':0.04,'n':0.037,'r':0.037,'p':0.03}
-        pickup = - (piece_dict[(self.board[alf][num]).lower()] + gripper_high)
-        dropoff = pickup + 0.005
-        if no piece in between
-        if piece in between
-        raise up high
-        drop off high 
-        start = self.__squareToTfmatrix(start)
-        end = self.__squareToTfmatrix(end)
-        self.manipulator.pickPlace(start,end)
-    '''
 
 if __name__ == "__main__":
     rospy.init_node('robot_system')
