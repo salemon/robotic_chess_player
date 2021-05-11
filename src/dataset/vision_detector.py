@@ -24,8 +24,7 @@ class VisionDetector:
         camera2chessboard_tfmatrix = camera2chessbaord_pose.to_tfmatrix()
         TCP2camera_tfmatrix = self.TCP2camera_pose.to_tfmatrix()
         base2TCP_tfmatrix = base2TCP_pose.to_tfmatrix()
-        base2chessboard_tfmatrix = np.matmul(np.matmul(base2TCP_tfmatrix,TCP2camera_tfmatrix),camera2chessboard_tfmatrix)
-        print(base2chessboard_tfmatrix)
+        base2chessboard_tfmatrix = np.matmul(base2TCP_tfmatrix,np.matmul(TCP2camera_tfmatrix,camera2chessboard_tfmatrix))
         return Trans3D.from_tfmatrix(base2chessboard_tfmatrix)
 
     def chessboardPose(self, image, base2TCP_pose):
@@ -35,7 +34,7 @@ class VisionDetector:
     def chessboardSquare(self,image,base2TCP_pose):
         self.square_dict,camera2chessbaord_pose = self.pose_estimator.estimateSquare(image)
         #self.SquareDict(square_dict) self.square_dict need to delete
-        return self.__baseToChessboard(camera2chessbaord_pose,base2TCP_pose)
+        return self.__baseToChessboard(camera2chessbaord_pose,base2TCP_pose),self.square_dict
         
     def chessboardState(self,image):
         board = self.state_detector.detecting(image)
