@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import sys
 import numpy as np
 import rospy
@@ -18,7 +19,7 @@ from robotiq_hande_ros_driver.srv import gripper_service
 class RobotManipulator(object):
     def __init__(self):
         self.robot = moveit_commander.RobotCommander()
-        group_name = "arm"#manipulator ur5e.srdf<group name="manipulator">
+        group_name = "arm"
         self.move_group = moveit_commander.MoveGroupCommander(group_name)
         self.display_trajectory_publisher = rospy.Publisher('/move_group/display_planned_path',
                                                     moveit_msgs.msg.DisplayTrajectory,
@@ -44,16 +45,10 @@ class RobotManipulator(object):
         (plan, fraction) = move_group.compute_cartesian_path(waypoints,0.01,0.0)#(waypoints,eef_stpe,jump_threshold)
         move_group.execute(plan, wait=True)
         return None
-        '''
-    
-        (plan, fraction) = move_group.compute_cartesian_path(waypoints,0.01,0.0)#(waypoints,eef_stpe,jump_threshold)
-        move_group.execute(plan, wait=True)
-        pose_msg = move_group.get_current_pose()
-        pose = Trans3D.from_PoseStamped(pose_msg)
-        return pose
-        '''
     
 if __name__ == "__main__":
     rospy.init_node('robot_execute_command')
-    robot = MotionPlanner()
+    robot = RobotManipulator()
+    pose = robot.robotCurrentPose()
+    print(pose.to_string())
     rospy.spin()

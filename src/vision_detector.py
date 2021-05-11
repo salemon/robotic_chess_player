@@ -1,7 +1,7 @@
 import numpy as np
 from transformation import Trans3D
 from chessboard_pose_estimation import *
-from chessboard_state_detection import *
+#from chessboard_state_detection import *
 
 
 
@@ -13,7 +13,7 @@ class VisionDetector:
         dist = np.array([-0.0588151813531173, 0.05245363676337366, 0.000101400909359754, -0.001346375977094263, 0.02585377839443043])
         self.pose_estimator = ChessboardPoseEstimation(cam_mtx, dist)
 
-        self.state_detector = ChessboardStateDetection(nn_path)
+        #self.state_detector = ChessboardStateDetection(nn_path)
         #TODO: obtain form ROS parameter
         cam_rot = np.array([-0.00285051, -0.000809386, 0.00617178, 0.999977])
         cam_trans = np.array([0.001514679603077936, -0.08438965970995699, 0.09423193500454446])
@@ -24,7 +24,8 @@ class VisionDetector:
         camera2chessboard_tfmatrix = camera2chessbaord_pose.to_tfmatrix()
         TCP2camera_tfmatrix = self.TCP2camera_pose.to_tfmatrix()
         base2TCP_tfmatrix = base2TCP_pose.to_tfmatrix()
-        base2chessboard_tfmatrix = np.matmul(base2TCP_tfmatrix,np.matmul(TCP2camera_tfmatrix,camera2chessboard_tfmatrix))
+        base2chessboard_tfmatrix = np.matmul(np.matmul(base2TCP_tfmatrix,TCP2camera_tfmatrix),camera2chessboard_tfmatrix)
+        print(base2chessboard_tfmatrix)
         return Trans3D.from_tfmatrix(base2chessboard_tfmatrix)
 
     def chessboardPose(self, image, base2TCP_pose):
