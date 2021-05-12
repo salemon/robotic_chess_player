@@ -18,12 +18,12 @@ from robotiq_hande_ros_driver.srv import gripper_service
 class RobotManipulator(object):
     def __init__(self):
         self.robot = moveit_commander.RobotCommander()
-        group_name = "manipulator"#manipulator ur5e.srdf<group name="manipulator">
+        group_name = "arm"#manipulator ur5e.srdf<group name="manipulator">
         self.move_group = moveit_commander.MoveGroupCommander(group_name)
         self.display_trajectory_publisher = rospy.Publisher('/move_group/display_planned_path',
                                                     moveit_msgs.msg.DisplayTrajectory,
                                                     queue_size=20)
-        #self.gripper_srv = rospy.ServiceProxy('gripper_service', gripper_service)
+        self.gripper_srv = rospy.ServiceProxy('gripper_service', gripper_service)
 
     def robotCurrentPose(self):
         return Trans3D.from_PoseStamped(self.move_group.get_current_pose())

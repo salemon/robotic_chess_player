@@ -20,7 +20,7 @@ class RobotService:
         self.manipulator = RobotManipulator()
         self.detector = VisionDetector()
 
-        self.camera_matrix = np.array([1353.131570942828, 0, 758.6928458558336, 0, 1353.743967167117, 557.9749908957598, 0, 0, 1]).reshape((3,3))
+        self.camera_matrix = np.array([1362.282739878488, 0, 769.7671812887013, 0, 1361.932430070161, 548.3188293914569, 0, 0, 1]).reshape((3,3))
         cam_rot = np.array([-0.00321568, -0.0135531, -0.0116504, 0.999835])
         cam_trans = np.array([-0.001561951275522637, -0.08589372872499101, 0.09399786754775818])
         self.TCP2camera_pose = Trans3D.from_quaternion(cam_rot, cam_trans)
@@ -57,18 +57,24 @@ class RobotService:
             continue
         self.img_received = False
 
+    def takeImage(self,file_name):
+        img = cv2.imread(file_name)
+        return img
+
     def detectChessboard(self):
         self.manipulator.goToJointState([90,-135,90,-70,-90,0.0])
-        self.trigger_image()
-        base2TCP_pose = self.manipulator.robotCurrentPose()
-        base2chessboard_pose = self.detector.chessboardPose(self.lastest_img,base2TCP_pose)
-        self.__takeImagePose(base2chessboard_pose)
+        #self.trigger_image()
+        #image = self.takeImage('standby.jpg')
+        #base2TCP_pose = self.manipulator.robotCurrentPose()
+        #base2chessboard_pose = self.detector.chessboardPose(image,base2TCP_pose)
+        #self.__takeImagePose(base2chessboard_pose)
+        self.camera_pose = Trans3D.from_quaternion(np.array([0.99941702, -0.02461466, 0.00364424, -0.02337633]),np.array([-0.12224625, 0.4306489, 0.76283612]))
         self.manipulator.goStraightToPose(self.camera_pose)
-        base2TCP_pose = self.manipulator.robotCurrentPose()
-        self.trigger_image()
-        self.base2chessboard_pose,self.square_dict = self.detector.chessboardSquare(self.lastest_img, base2TCP_pose)
-        self.__gameStandby()
-        self.manipulator.goToJointState(self.standby)
+        #base2TCP_pose = self.manipulator.robotCurrentPose()
+        #self.trigger_image()
+        #self.base2chessboard_pose,self.square_dict = self.detector.chessboardSquare(self.lastest_img, base2TCP_pose)
+        #self.__gameStandby()
+        #self.manipulator.goToJointState(self.standby)
         return "Detection accomplished"
 
     def __gameStandby(self):
@@ -84,6 +90,7 @@ class RobotService:
         tfmatrix[:,-1] = np.matmul(tfmatrix,np.array([0.18,0.18,-z,1]))
         tfmatrix = np.matmul(tfmatrix,inv(self.TCP2camera_pose.to_tfmatrix()))
         self.camera_pose = Trans3D.from_tfmatrix(tfmatrix)
+        print(self.camera_pose.to_string())
         return self.camera_pose
     
     def carryOutOrder(self,piece):

@@ -1,3 +1,4 @@
+import os
 import numpy as np
 from transformation import Trans3D
 from chessboard_pose_estimation import *
@@ -25,7 +26,6 @@ class VisionDetector:
         TCP2camera_tfmatrix = self.TCP2camera_pose.to_tfmatrix()
         base2TCP_tfmatrix = base2TCP_pose.to_tfmatrix()
         base2chessboard_tfmatrix = np.matmul(np.matmul(base2TCP_tfmatrix,TCP2camera_tfmatrix),camera2chessboard_tfmatrix)
-        print(base2chessboard_tfmatrix)
         return Trans3D.from_tfmatrix(base2chessboard_tfmatrix)
 
     def chessboardPose(self, image, base2TCP_pose):
@@ -40,6 +40,13 @@ class VisionDetector:
     def chessboardState(self,image):
         board = self.state_detector.detecting(image)
         return board
+
+    def crop_image(self,image, square, path):
+        for sq in square:
+            p = self.square_dict[sq]
+            square_img = image[p[0]:p[1],p[2]:p[3]]
+            name = os.path.join(path, '{}.jpg'.format(sq))
+            cv2.imwrite(name,square_img)
 
     def __undistortImage(image):
         pass
