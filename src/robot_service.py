@@ -71,20 +71,19 @@ class RobotService:
 
     def detectChessboard(self):
         self.manipulator.goToJointState([90,-135,90,-70,-90,0.0])
-        image = self.takeImage('standby.jpg')
+        self.trigger_image()
         base2TCP_pose = self.manipulator.robotCurrentPose()
-        base2chessboard_pose = self.detector.chessboardPose(image,base2TCP_pose)
-        self.__takeImagePose(base2chessboard_pose)
-        self.manipulator.goStraightToPose(self.camera_pose)
-        base2TCP_pose = self.manipulator.robotCurrentPose()
-        image = self.takeImage('217.jpg')
-        self.base2chessboard_pose = self.detector.chessboardSquare(image, base2TCP_pose)
+        base2chessboard_pose = self.detector.chessboardPose(self.lastest_img,base2TCP_pose)
+        self.manipulator.goToPose(self.__takeImagePose(base2chessboard_pose))
+        self.base2TCP_pose = self.manipulator.robotCurrentPose()
+        self.trigger_image()
+        self.base2chessboard_pose = self.detector.chessboardSquare(self.lastest_img, self.base2TCP_pose)
         self.__gameStandby()
         self.manipulator.goToJointState(self.standby)
         return "Detection accomplished"
 
     def __gameStandby(self):
-        tvect = self.camera_pose.to_tvec()
+        tvect = self.base2TCP_pose.to_tvec()
         x, y = tvect[0] + 0.1333025, tvect[1]
         angle = np.arccos(x / norm(np.array([x,y]))) / np.pi * 180
         self.standby = [angle,-135,90,-70,-90,0.0]
@@ -95,8 +94,8 @@ class RobotService:
         tfmatrix = base2chessboard_pose.to_tfmatrix()
         tfmatrix[:,-1] = np.matmul(tfmatrix,np.array([0.18,0.18,-z,1]))
         tfmatrix = np.matmul(tfmatrix,inv(self.TCP2camera_pose.to_tfmatrix()))
-        self.camera_pose = Trans3D.from_tfmatrix(tfmatrix)
-        return self.camera_pose
+        return Trans3D.from_tfmatrix(tfmatrix)
+    
     
     def takeImage(self,file_name):
         return cv2.imread(file_name)
@@ -149,26 +148,26 @@ class RobotService:
                 self.pickAndPlace(start1,end1,pickup_height,raiseup_height)
                 sq2, start2, end2 = word+str(2), end1, (1,alf)
                 self.pickAndPlace(start2,end2,pickup_height,raiseup_height)
-                self.manipulator.goStraightToPose(self.camera_pose)
-                image = self.takeImage('217.jpg')
+                self.manipulator.goToPose(self.base2TCP_pose)
+                self.trigger_image()
                 square = [sq1,sq2]
-                self.detector.crop_image(image,square,path)
+                self.detector.crop_image(self.lastest_img,square,path)
             else:
-                self.manipulator.goStraightToPose(self.camera_pose)
+                self.manipulator.goToPose(self.base2TCP_pose)
                 sq1,sq2 = word+str(1),word+str(2)
-                image = self.takeImage('217.jpg')
+                self.trigger_image()
                 square = [sq1,sq2]
-                self.detector.crop_image(image,square,path)
+                self.detector.crop_image(self.lastest_img,square,path)
             for num in range(0,3):
                 value1,value2 = (2*num+4),(2*num+3)
                 sq1, start1, end1 = word+str(value1), (2*num+1,alf), (2*num+3,alf)
                 self.pickAndPlace(start1,end1,pickup_height,raiseup_height)
                 sq2, start2, end2 = word+str(value2), (2*num,alf), (2*num+2,alf)
                 self.pickAndPlace(start2,end2,pickup_height,raiseup_height)
-                self.manipulator.goStraightToPose(self.camera_pose)
-                image = self.takeImage('217.jpg')
+                self.manipulator.goToPose(self.base2TCP_pose)
+                self.trigger_image()
                 square = [sq1,sq2]
-                self.detector.crop_image(image,square,path)
+                self.detector.crop_image(self.lastest_img,square,path)
         return 'Finished'
 
     def squareToIndex(self,square):

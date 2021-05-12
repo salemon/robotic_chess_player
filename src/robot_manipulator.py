@@ -37,6 +37,13 @@ class RobotManipulator(object):
         pose_msg = move_group.get_current_pose()
         pose = Trans3D.from_PoseStamped(pose_msg)
         return pose
+    
+    def goToPose(self,pose):
+        self.move_group.set_pose_target(pose.to_Pose())
+        self.move_group.go(wait = True)
+        self.move_group.stop()
+        self.move_group.clear_pose_targets()
+        return None
 
     def goStraightToPose(self,pose):
         waypoints = [pose.to_Pose()]
