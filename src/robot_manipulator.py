@@ -20,11 +20,12 @@ class RobotManipulator(object):
         self.robot = moveit_commander.RobotCommander()
         group_name = "arm"
         self.move_group = moveit_commander.MoveGroupCommander(group_name)
+        self.move_group.set_max_velocity_scaling_factor(0.2)
         self.display_trajectory_publisher = rospy.Publisher('/move_group/display_planned_path',
                                                     moveit_msgs.msg.DisplayTrajectory,
                                                     queue_size=20)
         self.gripper_srv = rospy.ServiceProxy('gripper_service', gripper_service)
-
+       
     def robotCurrentPose(self):
         return Trans3D.from_PoseStamped(self.move_group.get_current_pose())
 
@@ -58,6 +59,7 @@ class RobotManipulator(object):
             else:
                 if pose == 0: self.gripper_srv(0)
                 else: self.gripper_srv(1)
+
                 
 if __name__ == "__main__":
     rospy.init_node('robot_execute_command')

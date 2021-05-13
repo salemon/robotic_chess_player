@@ -73,13 +73,14 @@ class RobotService:
         self.manipulator.goToJointState([90,-135,90,-70,-90,0.0])
         self.trigger_image()
         base2TCP_pose = self.manipulator.robotCurrentPose()
-        base2chessboard_pose = self.detector.chessboardPose(self.lastest_img,base2TCP_pose)
-        self.manipulator.goToPose(self.__takeImagePose(base2chessboard_pose))
-        self.base2TCP_pose = self.manipulator.robotCurrentPose()
-        self.trigger_image()
-        self.base2chessboard_pose = self.detector.chessboardSquare(self.lastest_img, self.base2TCP_pose)
-        self.__gameStandby()
-        self.manipulator.goToJointState(self.standby)
+        self.base2chessboard_pose = self.detector.chessboardPose(self.lastest_img,base2TCP_pose)
+        print("base to chessboard: ",self.base2chessboard_pose.to_string())
+        self.manipulator.goToPose(self.__takeImagePose(self.base2chessboard_pose))
+        #self.base2TCP_pose = self.manipulator.robotCurrentPose()
+        #self.trigger_image()
+        #base2chessboard_pose = self.detector.chessboardSquare(self.lastest_img, self.base2TCP_pose)
+        #self.__gameStandby()
+        #self.manipulator.goToJointState(self.standby)
         return "Detection accomplished"
 
     def __gameStandby(self):
@@ -92,8 +93,9 @@ class RobotService:
     def __takeImagePose(self,base2chessboard_pose):
         z = (self.camera_matrix[0][0] * (-0.18)) / (400 - self.camera_matrix[0][2])
         tfmatrix = base2chessboard_pose.to_tfmatrix()
-        tfmatrix[:,-1] = np.matmul(tfmatrix,np.array([0.18,0.18,-z,1]))
-        tfmatrix = np.matmul(tfmatrix,inv(self.TCP2camera_pose.to_tfmatrix()))
+        tfmatrix[:,-1] = np.matmul(tfmatrix,np.array([0,0,-0.2,1]))
+        #tfmatrix[:,-1] = np.matmul(tfmatrix,np.array([0.18,0.18,-z,1]))
+        #tfmatrix = np.matmul(tfmatrix,inv(self.TCP2camera_pose.to_tfmatrix()))
         return Trans3D.from_tfmatrix(tfmatrix)
     
     
@@ -141,7 +143,7 @@ class RobotService:
         os.mkdir(path)
         alf_dict = {'h':0}
         pickup_height = self.__pickupHeight(piece)
-        raiseup_height = pickup_height + 0.007
+        raiseup_height = pickup_height + 0.01
         for word,alf in alf_dict.items():
             if alf != 0:
                 sq1, start1, end1 = word+str(1), end2, (0,alf)
@@ -149,25 +151,32 @@ class RobotService:
                 sq2, start2, end2 = word+str(2), end1, (1,alf)
                 self.pickAndPlace(start2,end2,pickup_height,raiseup_height)
                 self.manipulator.goToPose(self.base2TCP_pose)
+                rospy.sleep(1)
                 self.trigger_image()
                 square = [sq1,sq2]
                 self.detector.crop_image(self.lastest_img,square,path)
             else:
                 self.manipulator.goToPose(self.base2TCP_pose)
                 sq1,sq2 = word+str(1),word+str(2)
+                rospy.sleep(1)
                 self.trigger_image()
                 square = [sq1,sq2]
                 self.detector.crop_image(self.lastest_img,square,path)
+
             for num in range(0,3):
                 value1,value2 = (2*num+4),(2*num+3)
                 sq1, start1, end1 = word+str(value1), (2*num+1,alf), (2*num+3,alf)
                 self.pickAndPlace(start1,end1,pickup_height,raiseup_height)
                 sq2, start2, end2 = word+str(value2), (2*num,alf), (2*num+2,alf)
                 self.pickAndPlace(start2,end2,pickup_height,raiseup_height)
-                self.manipulator.goToPose(self.base2TCP_pose)
+                pose = self.manipulator.robotCurrentPose()
+                print("moveit: ",pose.to_string())
+                #self.manipulator.goToPose(self.base2TCP_pose)
+                rospy.sleep(1)
                 self.trigger_image()
                 square = [sq1,sq2]
                 self.detector.crop_image(self.lastest_img,square,path)
+                break
         return 'Finished'
 
     def squareToIndex(self,square):
@@ -175,8 +184,9 @@ class RobotService:
         return (int(square[1])-1, alf_dict[square[0]])
 
     def __pickupHeight(self,piece):
-        pickup_dict = {'k':0.065,'q':0.065,'b':0.04,'n':0.037,'r':0.037,'p':0.03}
-        pickup_height = pickup_dict[piece.lower()] + 0.1338
+        #pickup_dict = {'k':0.09,'q':0.09,'b':0.06,'n':0.05,'r':0.05,'p':0.04}
+        #pickup_height = pickup_dict[piece.lower()] + 0.135
+        pickup_height = 0.20
         return pickup_height
 
     def pickAndPlace(self,start,end,pickup_height,raiseup_height):
@@ -193,9 +203,9 @@ class RobotService:
         return max([piece_height[i.lower()] for i in passing_area.reshape((passing_area.size,))])
     
     def __waypointGenerator(self,square,height):
-        unit_length = 0.045/2
+        unit_length = 0
         tfmatrix = self.base2chessboard_pose.to_tfmatrix().copy()
-        tfmatrix[:,-1] = np.matmul(tfmatrix,np.array([(2*square[1]+1)*unit_length,(2*square[0]+1)*unit_length,-height,1]))
+        tfmatrix[:,-1] = np.matmul(tfmatrix, np.array([(2*square[1]+1)*unit_length,(2*square[0]+1)*unit_length,-height,1]))
         tfmatrix_pose = Trans3D.from_tfmatrix(tfmatrix)
         return tfmatrix_pose
 
@@ -204,7 +214,9 @@ class RobotService:
         start_raiseup = self.__waypointGenerator(start, raiseup_height)
         end_raiseup = self.__waypointGenerator(end, raiseup_height)
         dropoff = self.__waypointGenerator(end, pickup_height-0.003)
-        waypoints = [pickup, start_raiseup, end_raiseup, dropoff]
+        waypoints = [pickup]
+        print("calculated: ", pickup.to_string())
+        #waypoints = [pickup, 0, start_raiseup, end_raiseup, dropoff, 1]
         return waypoints
 
 if __name__ == "__main__":

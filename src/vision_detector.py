@@ -26,6 +26,8 @@ class VisionDetector:
         TCP2camera_tfmatrix = self.TCP2camera_pose.to_tfmatrix()
         base2TCP_tfmatrix = base2TCP_pose.to_tfmatrix()
         base2chessboard_tfmatrix = np.matmul(np.matmul(base2TCP_tfmatrix,TCP2camera_tfmatrix),camera2chessboard_tfmatrix)
+        pose = Trans3D.from_tfmatrix(base2chessboard_tfmatrix)
+        print(pose.to_string())
         return Trans3D.from_tfmatrix(base2chessboard_tfmatrix)
 
     def chessboardPose(self, image, base2TCP_pose):

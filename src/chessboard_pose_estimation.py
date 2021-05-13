@@ -162,9 +162,28 @@ class ChessboardPoseEstimation():
         inner_points = self.chessboard_inner_points()
         corner,image_points = self.img_points(inner_points)
         object_points = self.object_coordinate(corner)
+
         camera_matrix,dist_coeff = self.camera_matrix,self.dist_coeff
         _, rotation_vector, translation_vector = cv2.solvePnP(
                 object_points, image_points, camera_matrix, dist_coeff)
+    
+        def draw(img, imgpts):
+            corner = tuple(imgpts[0].ravel())
+            img = cv2.line(img, corner, tuple(imgpts[1].ravel()), (255,0,0), 5)
+            img = cv2.line(img, corner, tuple(imgpts[2].ravel()), (0,255,0), 5)
+            img = cv2.line(img, corner, tuple(imgpts[3].ravel()), (0,0,255), 5)
+            return img
+        axis = np.float32([[0,0,0],[0.045,0,0], [0,0.045,0], [0,0,-0.03]]).reshape(-1,3)
+        imgpts, jac = cv2.projectPoints(axis, rotation_vector, translation_vector, self.camera_matrix, self.dist_coeff)
+        img = image.copy()
+        img = draw(img,imgpts)
+        for p in image_points:
+            x,y = p
+            cv2.circle(img,(int(x),int(y)),3,(255,0,0),-1)
+        cv2.imshow('img',img)
+        cv2.waitKey(0) & 0xFF
+        cv2.destroyAllWindows()
+        
         return rotation_vector,translation_vector
 
     def estimatePose(self,image):
