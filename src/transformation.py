@@ -191,6 +191,15 @@ class Trans3D:
 
     def to_string(self):
         return "rotation: {},  translation: {}".format(self.quat, self.tvec)
+    
+    def __str__(self):
+        return self.to_string()
+    
+    def __mul__(self, other):
+        m1 = self.to_tfmatrix()
+        m2 = other.to_tfmatrix()
+        m = np.matmul(m1, m2)
+        return Trans3D.from_tfmatrix(m)
         
 if __name__ == "__main__":
     rot = np.ones((3,3))
@@ -214,3 +223,9 @@ if __name__ == "__main__":
     print(pose4.to_angaxis())
     print(pose4.to_tfmatrix())
     print(pose4.to_yamlString("pose", 1))
+    print("testing printing")
+    print(pose1)
+    print("testing * operation")
+    pose1 = Trans3D.from_tvec(np.array([1,2,3]))
+    pose2 = Trans3D.from_tvec(np.array([4,5,6]))
+    print(pose1 * pose2)
