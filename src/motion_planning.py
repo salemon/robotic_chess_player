@@ -215,6 +215,16 @@ class MotionPlanner:
             self.robot_client.cancel_goal() 
             raise
     
+    def moveRobotJoint(self, joint_pos_list, speed_scale=1, unit='degree'):
+        msg = self.create_trajectories(joint_pos_list, speed_scale, unit)
+        # send to robot controler
+        self.robot_client.send_goal(msg)
+        try:
+            self.robot_client.wait_for_result()
+        except KeyboardInterrupt:
+            self.robot_client.cancel_goal() 
+            raise
+        
     def currentRobotPose(self):
         try:
             trans = self.tfBuffer.lookup_transform('base', 'tool0_controller', rospy.Time.now(), rospy.Duration(0.5))
