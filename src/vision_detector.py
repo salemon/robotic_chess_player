@@ -31,7 +31,7 @@ class VisionDetector:
         return Trans3D.from_tfmatrix(base2chessboard_tfmatrix)
 
     def chessboardPose(self, image, base2TCP_pose):
-        camera2chessbaord_pose = self.pose_estimator.estimatePoseTest(image)
+        camera2chessbaord_pose = self.pose_estimator.estimatePose(image)
         return self.__baseToChessboard(camera2chessbaord_pose,base2TCP_pose)
         
     def chessboardSquare(self,image,base2TCP_pose):

@@ -31,7 +31,8 @@ class MotionPlanner:
     '''
     simple motion planner
     '''
-    def __init__(self):
+    def __init__(self, simulation=False):
+        self.isSim = simulation
         self.kin = ikfastpy.PyKinematics()
         
         self.joint_state_sub = rospy.Subscriber('joint_states', JointState, self.joint_state_callback)
@@ -45,7 +46,10 @@ class MotionPlanner:
 
         # connect to robot controller
         rospy.loginfo("Attempting connection to robot action server.....")
-        self.robot_client = actionlib.SimpleActionClient('scaled_pos_joint_traj_controller/follow_joint_trajectory', FollowJointTrajectoryAction)
+        if not self.isSim:
+            self.robot_client = actionlib.SimpleActionClient('scaled_pos_joint_traj_controller/follow_joint_trajectory', FollowJointTrajectoryAction)
+        else:
+            self.robot_client = actionlib.SimpleActionClient('arm_controller/follow_joint_trajectory', FollowJointTrajectoryAction)
         rospy.loginfo("Waiting for robot server...")
         self.robot_client.wait_for_server()
         rospy.loginfo("Connected to robot server")
@@ -234,7 +238,11 @@ class MotionPlanner:
         
     def currentRobotPose(self):
         try:
-            trans = self.tfBuffer.lookup_transform('base', 'tool0_controller', rospy.Time.now(), rospy.Duration(0.5))
+            if self.isSim:
+                ee_frame = 'tool0'
+            else:
+                ee_frame = 'tool0_controller'
+            trans = self.tfBuffer.lookup_transform('base', ee_frame, rospy.Time.now(), rospy.Duration(0.5))
         except:
             rospy.logerr("Failed to get the current robot pose.")
         return Trans3D.from_TransformStamped(trans) 
