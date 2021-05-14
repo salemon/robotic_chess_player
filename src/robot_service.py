@@ -72,6 +72,8 @@ class RobotService:
     def detectChessboard(self):
         self.manipulator.goToJointState([90,-135,90,-70,-90,0.0])
         self.trigger_image()
+        # sleep 1 seconds. Wait robot to stablize.
+        rospy.sleep(1)
         base2TCP_pose = self.manipulator.robotCurrentPose()
         self.base2chessboard_pose = self.detector.chessboardPose(self.lastest_img,base2TCP_pose)
         print("base to chessboard: ",self.base2chessboard_pose.to_string())
