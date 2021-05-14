@@ -63,9 +63,16 @@ class MotionPlanner:
         self.ee_rot_speed = np.pi
 
     def joint_state_callback(self, msg):
-        joint_idx = [self.name_map[joint_name] for joint_name in msg.name]
+        joint_idx = []
+        for idx, name in enumerate(msg.name):
+            if name in self.name_map:
+                joint_idx.append(self.name_map[name]) 
+            else:
+                joint_idx.append(-1)
+
         for idx, ang in enumerate(msg.position):
-            self.lastest_joint_state[joint_idx[idx]] = ang
+            if joint_idx[idx] != -1:
+                self.lastest_joint_state[joint_idx[idx]] = ang
     
     def forward_kin(self, joint_angles):
         pose = self.kin.forward(joint_angles)
