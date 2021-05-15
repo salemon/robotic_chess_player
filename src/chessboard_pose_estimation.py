@@ -166,7 +166,7 @@ class ChessboardPoseEstimation():
         camera_matrix,dist_coeff = self.camera_matrix,self.dist_coeff
         _, rotation_vector, translation_vector = cv2.solvePnP(
                 object_points, image_points, camera_matrix, dist_coeff)
-    
+        '''
         def draw(img, imgpts):
             corner = tuple(imgpts[0].ravel())
             img = cv2.line(img, corner, tuple(imgpts[1].ravel()), (255,0,0), 5)
@@ -183,12 +183,13 @@ class ChessboardPoseEstimation():
         cv2.imshow('img',img)
         cv2.waitKey(0) & 0xFF
         cv2.destroyAllWindows()
-        
+        '''
         return rotation_vector,translation_vector
 
     def estimatePose(self,image):
         rotation_vector,translation_vector = self.estimate(image)
         camera2chessboard_pose = Trans3D.from_angaxis(rotation_vector, tvec=translation_vector)
+        camera2chessboard_pose = camera2chessboard_pose * Trans3D.from_tvec(np.array([0,0,-0.1338]))
         return camera2chessboard_pose
     
     def estimatePoseTest(self, image):
@@ -244,6 +245,7 @@ class ChessboardPoseEstimation():
                 key = world + str(num)
                 square = self.squarePixel(alf,num,rot_vect,trans_vect,self.camera_matrix)
                 square_dict[key] = square
-        pose = Trans3D.from_angaxis(rot_vect, tvec=trans_vect)
-        return square_dict,pose
+        camera2chessboard_pose = Trans3D.from_angaxis(rot_vect, tvec=trans_vect)
+        camera2chessboard_pose = camera2chessboard_pose * Trans3D.from_tvec(np.array([0,0,-0.1338]))
+        return square_dict,camera2chessboard_pose
 
