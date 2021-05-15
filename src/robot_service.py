@@ -81,9 +81,10 @@ class RobotService:
         self.manipulator.moveRobot(self.__takeImagePose(self.base2chessboard_pose))
         self.base2TCP_pose = self.manipulator.currentRobotPose()
         #self.trigger_image()
-        #base2chessboard_pose = self.detector.chessboardSquare(self.lastest_img, self.base2TCP_pose)
-        #self.__gameStandby()
-        #self.manipulator.moveRobotJoint([self.standby])
+        self.lastest_img = self.takeImage('217.jpg')
+        base2chessboard_pose = self.detector.chessboardSquare(self.lastest_img, self.base2TCP_pose)
+        self.__gameStandby()
+        self.manipulator.moveRobotJoint([self.standby])
         return "Detection accomplished"
 
     def __gameStandby(self):
@@ -145,6 +146,7 @@ class RobotService:
         alf_dict = {'h':0}
         pickup_height = self.__pickupHeight(piece)
         raiseup_height = pickup_height + 0.01
+    
         for word,alf in alf_dict.items():
             if alf != 0:
                 sq1, start1, end1 = word+str(1), end2, (0,alf)
@@ -192,7 +194,7 @@ class RobotService:
 
     def pickAndPlace(self,start,end,pickup_height,raiseup_height):
         waypoints = self.pickAndPlaceWaypoints(start,end,pickup_height,raiseup_height)
-        self.manipulator.executePlan(waypoints)
+        self.manipulator.moveRobot(waypoints)
 
     def raiseUpKnight(self,start,end):
         piece_height = {'k':0.105,'q':0.095,'b':0.08,'n':0.06,'r':0.06,'p':0.05,'_':0.007}

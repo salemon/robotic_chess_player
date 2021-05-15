@@ -20,23 +20,14 @@ class VisionDetector:
         cam_trans = np.array([0.001514679603077936, -0.08438965970995699, 0.09423193500454446])
         self.TCP2camera_pose = Trans3D.from_quaternion(cam_rot, cam_trans)
         pass
-    
-    def __baseToChessboard(self,camera2chessbaord_pose,base2TCP_pose):
-        camera2chessboard_tfmatrix = camera2chessbaord_pose.to_tfmatrix()
-        TCP2camera_tfmatrix = self.TCP2camera_pose.to_tfmatrix()
-        base2TCP_tfmatrix = base2TCP_pose.to_tfmatrix()
-        base2chessboard_tfmatrix = np.matmul(np.matmul(base2TCP_tfmatrix,TCP2camera_tfmatrix),camera2chessboard_tfmatrix)
-        pose = Trans3D.from_tfmatrix(base2chessboard_tfmatrix)
-        print(pose.to_string())
-        return Trans3D.from_tfmatrix(base2chessboard_tfmatrix)
-
+        
     def chessboardPose(self, image, base2TCP_pose):
         camera2chessbaord_pose = self.pose_estimator.estimatePose(image)
-        return self.__baseToChessboard(camera2chessbaord_pose,base2TCP_pose)
+        return base2TCP_pose * self.TCP2camera_pose * camera2chessboard_pose
         
     def chessboardSquare(self,image,base2TCP_pose):
         self.square_dict,camera2chessbaord_pose = self.pose_estimator.estimateSquare(image)
-        return self.__baseToChessboard(camera2chessbaord_pose,base2TCP_pose)
+        return base2TCP_pose * self.TCP2camera_pose * camera2chessboard_pose
         
     def chessboardState(self,image):
         board = self.state_detector.detecting(image)
