@@ -15,6 +15,9 @@ import actionlib
 from control_msgs.msg import *
 from trajectory_msgs.msg import *
 from transformation import Trans3D 
+gripper_path = r.get_path('robotic_chess_player') + '/include/robotiq_hande_ros_driver'
+sys.path.append(gripper_path)
+from robotiq_hande_ros_driver.srv import gripper_service
 
 def max_joint_diff(wp1, wp2):
     '''
@@ -65,7 +68,8 @@ class MotionPlanner:
         self.ee_acc = 0.2
         self.acc_time = self.ee_speed / self.ee_acc
         self.ee_rot_speed = np.pi
-
+        #gripper service 
+        self.gripper_srv = rospy.ServiceProxy('gripper_service', gripper_service)
     def joint_state_callback(self, msg):
         joint_idx = []
         for idx, name in enumerate(msg.name):
@@ -207,14 +211,12 @@ class MotionPlanner:
     def moveRobot(self, pose_list, speed_scale=1, start_joint_pos=None):
         if start_joint_pos is None:
             start_joint_pos = self.lastest_joint_state
-
         # ik solution for each pose 
         trajectory_list = []
         current_joint_pos = start_joint_pos
         for pose in pose_list:
             current_joint_pos = self.ikSolve(pose, current_joint_pos)
             trajectory_list.append(current_joint_pos)
-        
         # generate joint trajectory list
         msg = self.create_trajectories(trajectory_list, speed_scale, 'rad')
 
@@ -225,7 +227,15 @@ class MotionPlanner:
         except KeyboardInterrupt:
             self.robot_client.cancel_goal() 
             raise
-    
+
+    def moveRobotWaypoints(self,pose_list):
+        for i in pose_list:
+            if type(i) != int:
+                self.moveRobot(i)
+            else:
+                if i == 0:self.gripper_srv(0)
+                else: self.gripper_srv(1)
+
     def moveRobotJoint(self, joint_pos_list, speed_scale=1, unit='degree'):
         msg = self.create_trajectories(joint_pos_list, speed_scale, unit)
         # send to robot controler
@@ -235,7 +245,7 @@ class MotionPlanner:
         except KeyboardInterrupt:
             self.robot_client.cancel_goal() 
             raise
-        
+    
     def currentRobotPose(self):
         try:
             if self.isSim:

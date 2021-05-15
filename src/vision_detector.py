@@ -6,25 +6,25 @@ from chessboard_pose_estimation import *
 
 class VisionDetector:
 
-    def __init__(self):
-        self.cam_mtx = np.array([1353.131570942828, 0, 758.6928458558336, 0, 1353.743967167117, 557.9749908957598, 0, 0, 1]).reshape((3,3))
-        self.dist = np.array([-0.0588151813531173, 0.05245363676337366, 0.000101400909359754, -0.001346375977094263, 0.02585377839443043])
+    def __init__(self,cam_mtx,dist,TCP2camera_pose):
+        self.cam_mtx = cam_mtx
+        self.dist = dist
         self.pose_estimator = ChessboardPoseEstimation(self.cam_mtx, self.dist)
+        self.TCP2camera_pose = TCP2camera_pose
 
-        #self.state_detector = ChessboardStateDetection(nn_path)
-        #TODO: obtain form ROS parameter
-        cam_rot = np.array([-0.00285051, -0.000809386, 0.00617178, 0.999977])
-        cam_trans = np.array([0.001514679603077936, -0.08438965970995699, 0.09423193500454446])
-        self.TCP2camera_pose = Trans3D.from_quaternion(cam_rot, cam_trans)
-        pass
+    def __adjustError(self,camera2chessbaord_pose,base2TCP_pose):
+        pose = base2TCP_pose * self.TCP2camera_pose * camera2chessbaord_pose
+        pose_tfmatrix = pose.to_tfmatrix()
+        pose_tfmatrix[2,3] += 0.0185
+        return Trans3D.from_tfmatrix(pose_tfmatrix)
 
     def chessboardPose(self, image, base2TCP_pose):
         camera2chessbaord_pose = self.pose_estimator.estimatePose(image)
-        return base2TCP_pose * self.TCP2camera_pose * camera2chessbaord_pose
+        return self.__adjustError(camera2chessbaord_pose,base2TCP_pose)
         
     def chessboardSquare(self,image,base2TCP_pose):
         self.square_dict,camera2chessbaord_pose = self.pose_estimator.estimateSquare(image)
-        return base2TCP_pose * self.TCP2camera_pose * camera2chessbaord_pose
+        return self.__adjustError(camera2chessbaord_pose,base2TCP_pose)
         
     def chessboardState(self,image):
         board = self.state_detector.detecting(image)

@@ -191,35 +191,6 @@ class ChessboardPoseEstimation():
         camera2chessboard_pose = Trans3D.from_angaxis(rotation_vector, tvec=translation_vector)
         camera2chessboard_pose = camera2chessboard_pose * Trans3D.from_tvec(np.array([0,0,-0.1338]))
         return camera2chessboard_pose
-    
-    def estimatePoseTest(self, image):
-        def draw(img, corners, imgpts):
-            corner = tuple(corners[0].ravel())
-            img = cv2.line(img, corner, tuple(imgpts[0].ravel()), (255,0,0), 5)
-            img = cv2.line(img, corner, tuple(imgpts[1].ravel()), (0,255,0), 5)
-            img = cv2.line(img, corner, tuple(imgpts[2].ravel()), (0,0,255), 5)
-            return img
-        objp = np.zeros((6*9,3), np.float32)
-        objp[:,:2] = np.mgrid[0:6,0:9].T.reshape(-1,2)
-        objp *= 0.022
-        axis = np.float32([[0.088,0,0], [0,0.088,0], [0,0,-0.088]]).reshape(-1,3)
-
-        # detect feature points.
-        ret, corners = cv2.findChessboardCorners(image, (6,9))
-        # refine pixel location
-        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
-        if ret:
-            corners2 = cv2.cornerSubPix(image, corners, (11,11), (-1,-1), criteria)
-            ret, rvecs, tvecs = cv2.solvePnP(objp, corners2, self.camera_matrix, self.dist_coeff)
-        # project 3D points to image plane
-        imgpts, jac = cv2.projectPoints(axis, rvecs, tvecs, self.camera_matrix, self.dist_coeff)
-        img = draw(image, corners2, imgpts)
-        cv2.imshow('img',img)
-        cv2.waitKey(-1)
-
-        chessbaord2camera_pose = Trans3D.from_angaxis(rvecs, tvec=tvecs)
-        print("detected chessboard to camera pose: " + chessbaord2camera_pose.to_string())
-        return chessbaord2camera_pose
         
     @staticmethod
     def squarePixel(alf,num,rot_vect,trans_vect,camera_matrix):
