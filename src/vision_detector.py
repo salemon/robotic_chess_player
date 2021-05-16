@@ -1,5 +1,6 @@
 import os
 import numpy as np
+from numpy.linalg import norm
 from transformation import Trans3D
 from chessboard_pose_estimation import *
 #from chessboard_state_detection import *
@@ -15,15 +16,25 @@ class VisionDetector:
     def __adjustError(self,camera2chessbaord_pose,base2TCP_pose):
         pose = base2TCP_pose * self.TCP2camera_pose * camera2chessbaord_pose
         pose_tfmatrix = pose.to_tfmatrix()
-        pose_tfmatrix[2,3] += 0.0185
+        x = pose_tfmatrix[:3,0]
+        x_desire = x.copy()
+        x_desire[-1] = 0
+        unit_vector_1 = x / np.linalg.norm(x)
+        unit_vector_2 = x_desire / np.linalg.norm(x_desire)
+        dot_product = np.dot(unit_vector_1, unit_vector_2)
+        angle = np.arccos(dot_product)
+        rotation = Trans3D.from_angaxis(np.array([0,angle,0]))
+        pose_tfmatrix = (rotation*pose).to_tfmatrix()
+        pose_tfmatrix[2,3] = 0.181
         return Trans3D.from_tfmatrix(pose_tfmatrix)
 
-    def chessboardPose(self, image, base2TCP_pose):
+    def chessboardPose(self, image, base2TCP_pose,adjust = False):
         camera2chessbaord_pose = self.pose_estimator.estimatePose(image)
-        return self.__adjustError(camera2chessbaord_pose,base2TCP_pose)
+        return base2TCP_pose * self.TCP2camera_pose * camera2chessbaord_pose
         
     def chessboardSquare(self,image,base2TCP_pose):
         self.square_dict,camera2chessbaord_pose = self.pose_estimator.estimateSquare(image)
+        #return base2TCP_pose * self.TCP2camera_pose * camera2chessbaord_pose
         return self.__adjustError(camera2chessbaord_pose,base2TCP_pose)
         
     def chessboardState(self,image):

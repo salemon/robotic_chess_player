@@ -173,7 +173,7 @@ class ChessboardPoseEstimation():
             img = cv2.line(img, corner, tuple(imgpts[2].ravel()), (0,255,0), 5)
             img = cv2.line(img, corner, tuple(imgpts[3].ravel()), (0,0,255), 5)
             return img
-        axis = np.float32([[0,0,0],[0.045,0,0], [0,0.045,0], [0,0,-0.03]]).reshape(-1,3)
+        axis = np.float32([[0,0,0],[0.045,0,0], [0,0.045,0], [0.045*7.5,0.045*0.5,0]]).reshape(-1,3)
         imgpts, jac = cv2.projectPoints(axis, rotation_vector, translation_vector, self.camera_matrix, self.dist_coeff)
         img = image.copy()
         img = draw(img,imgpts)

@@ -50,7 +50,7 @@ class RobotService:
     def serviceHandler(self,msg):
         rospy.loginfo("Request: {}".format(msg.request))
         if msg.request == "to standby":
-            self.manipulator.moveRobotJoint([self.standby])
+            self.manipulator.moveRobotJoint([[90,-135,90,-70,-90,0.0]])
             return TaskPlanningResponse('Robot arrive general standby position') 
         
         elif msg.request == 'detect chessboard':
@@ -158,26 +158,41 @@ class RobotService:
         alf_list = ['h','g','f','e','d','c','b','a']
         path = os.path.join(parent_dir, piece)
         os.mkdir(path)
-        for word in alf_list:
-            for num in range(1,9,2):
-                if word == 'h' and num == 1:
-                    self.__takingImage()
-                    sq1, sq2 = word + str(num), word + str(num+1)
-                    self.detector.crop_image(self.lastest_img,[sq1,sq2],path)
-                elif num == 1:
-                    sq1, pre_sq1 = word+str(num), sq1
-                    self.pickAndPlace(piece,pre_sq1,sq1)
-                    sq2, pre_sq2 = word+str(num+1), sq2
-                    self.pickAndPlace(piece,pre_sq2,sq2)
-                    self.__takingImage()
-                    self.detector.crop_image(self.lastest_img,[sq1,sq2],path)
-                else:
-                    sq2, pre_sq2 = word+str(num+1), sq2
-                    self.pickAndPlace(piece,pre_sq2,sq2)
-                    sq1, pre_sq1 = word+str(num), sq1
-                    self.pickAndPlace(piece,pre_sq1,sq1)
-                    self.__takingImage()
-                    self.detector.crop_image(self.lastest_img,[sq1,sq2],path)
+        if piece.lower() != 'k':
+            for word in alf_list:
+                for num in range(1,9,2):
+                    if word == 'h' and num == 1:
+                        self.__takingImage()
+                        sq1, sq2 = word + str(num), word + str(num+1)
+                        self.detector.crop_image(self.lastest_img,[sq1,sq2],path)
+                    elif num == 1:
+                        sq1, pre_sq1 = word+str(num), sq1
+                        self.pickAndPlace(piece,pre_sq1,sq1)
+                        sq2, pre_sq2 = word+str(num+1), sq2
+                        self.pickAndPlace(piece,pre_sq2,sq2)
+                        self.__takingImage()
+                        self.detector.crop_image(self.lastest_img,[sq1,sq2],path)
+                    else:
+                        sq2, pre_sq2 = word+str(num+1), sq2
+                        self.pickAndPlace(piece,pre_sq2,sq2)
+                        sq1, pre_sq1 = word+str(num), sq1
+                        self.pickAndPlace(piece,pre_sq1,sq1)
+                        self.__takingImage()
+                        self.detector.crop_image(self.lastest_img,[sq1,sq2],path)
+        else:
+            self.__takingImage()
+            sq1 = 'h1'
+            self.detector.crop_image(self.lastest_img,[sq1],path)
+            for word in alf_list:
+                for num in range(1,9):
+                    if word == 'h' and num == 1:continue
+                    else:
+                        sq1, pre_sq1 = word+str(num), sq1
+                        self.pickAndPlace(piece,pre_sq1,sq1)
+                        self.__takingImage()
+                        self.detector.crop_image(self.lastest_img,[sq1],path)
+
+    
         return 'Finished'
     def toSquare(self,square):
         square_pose = self.__squarePose(square)
@@ -197,14 +212,14 @@ class RobotService:
         return square_pose * point
 
     def __pickDropPose(self,piece,start_pose,end_pose):
-        pickup_dict = {'k':0.067,'q':0.064,'b':0.0525,'n':0.0408,'r':0.041,'p':0.031}
+        pickup_dict = {'k':0.062,'q':0.059,'b':0.0475,'n':0.0358,'r':0.0327,'p':0.025}
         pickup_height = pickup_dict[piece.lower()]
         pickup_pose = start_pose * Trans3D.from_tvec(np.array([0,0,-pickup_height]))
-        dropoff_pose = end_pose * Trans3D.from_tvec(np.array([0,0,-pickup_height + 0.00175]))
+        dropoff_pose = end_pose * Trans3D.from_tvec(np.array([0,0,-pickup_height + 0.0006]))
         return pickup_pose, dropoff_pose, pickup_height
 
     def __raiseUpKight(self,start,end):
-        piece_height = {'k':0.105,'q':0.095,'b':0.08,'n':0.06,'r':0.06,'p':0.05,'_':0.007}
+        piece_height = {'k':0.105,'q':0.095,'b':0.08,'n':0.06,'r':0.06,'p':0.05,'_':0.01}
         row = [start[0], end[0]]
         col = [start[1], end[1]]
         chessboard = self.chessboard.copy()
