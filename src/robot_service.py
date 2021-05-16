@@ -49,8 +49,8 @@ class RobotService:
 
     def serviceHandler(self,msg):
         rospy.loginfo("Request: {}".format(msg.request))
-        if msg.request == "to general standby":
-            self.manipulator.moveRobotJoint([90,-135,90,-70,-90,0.0])
+        if msg.request == "to standby":
+            self.manipulator.moveRobotJoint([self.standby])
             return TaskPlanningResponse('Robot arrive general standby position') 
         
         elif msg.request == 'detect chessboard':
@@ -154,9 +154,8 @@ class RobotService:
         return None
 
     def collectData(self,piece):
-        #alf_dict = {'h':0,'g':1,'f':2,'e':3,'d':4,'c':5,'b':6,'a':7}
         parent_dir = os.getcwd()
-        alf_list = ['h','g']
+        alf_list = ['h','g','f','e','d','c','b','a']
         path = os.path.join(parent_dir, piece)
         os.mkdir(path)
         for word in alf_list:
@@ -164,6 +163,13 @@ class RobotService:
                 if word == 'h' and num == 1:
                     self.__takingImage()
                     sq1, sq2 = word + str(num), word + str(num+1)
+                    self.detector.crop_image(self.lastest_img,[sq1,sq2],path)
+                elif num == 1:
+                    sq1, pre_sq1 = word+str(num), sq1
+                    self.pickAndPlace(piece,pre_sq1,sq1)
+                    sq2, pre_sq2 = word+str(num+1), sq2
+                    self.pickAndPlace(piece,pre_sq2,sq2)
+                    self.__takingImage()
                     self.detector.crop_image(self.lastest_img,[sq1,sq2],path)
                 else:
                     sq2, pre_sq2 = word+str(num+1), sq2
@@ -191,10 +197,10 @@ class RobotService:
         return square_pose * point
 
     def __pickDropPose(self,piece,start_pose,end_pose):
-        pickup_dict = {'k':0.09,'q':0.09,'b':0.06,'n':0.05,'r':0.05,'p':0.04}
+        pickup_dict = {'k':0.067,'q':0.064,'b':0.0525,'n':0.0408,'r':0.041,'p':0.031}
         pickup_height = pickup_dict[piece.lower()]
         pickup_pose = start_pose * Trans3D.from_tvec(np.array([0,0,-pickup_height]))
-        dropoff_pose = end_pose * Trans3D.from_tvec(np.array([0,0,-pickup_height + 0.001]))
+        dropoff_pose = end_pose * Trans3D.from_tvec(np.array([0,0,-pickup_height + 0.00175]))
         return pickup_pose, dropoff_pose, pickup_height
 
     def __raiseUpKight(self,start,end):
@@ -226,12 +232,15 @@ class RobotService:
         s_pose, e_pose = self.__squarePose(start), self.__squarePose(end)
         ab_s_pose, ab_e_pose = self.__aboveSquarePose(s_pose), self.__aboveSquarePose(e_pose)
         pickup_pose, dropoff_pose, pickup_height = self.__pickDropPose(piece,s_pose,e_pose)
+        '''
         if piece != 'n':
             raiseup_height = pickup_height + 0.01
         else:
             raiseup_height = self.__raiseUpKight(start,end)
+        '''
+        raiseup_height = pickup_height + 0.01
         ra_s_pose,ra_e_pose = self.__raiseUpPose(raiseup_height,s_pose,e_pose)
-        waypoints = [[ab_s_pose, pickup_pose], [ra_s_pose, ra_e_pose,dropoff_pose],[ab_e_pose]]
+        waypoints = [[ab_s_pose, pickup_pose], 0,[ra_s_pose, ra_e_pose,dropoff_pose], 1, [ab_e_pose]]
         self.manipulator.moveRobotWaypoints(waypoints)
         return None
 
