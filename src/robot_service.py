@@ -8,6 +8,7 @@ from std_msgs.msg import String
 from robotic_chess_player.srv import TaskPlanning,TaskPlanningResponse
 import numpy as np
 from numpy.linalg import inv,norm
+from avt_camera import *
 from motion_planning import *
 from vision_detector import *
 from transformation import Trans3D
@@ -26,26 +27,7 @@ class RobotService:
         self.TCP2camera_pose = Trans3D.from_ROSParameterServer("/hand_eye_position")
         self.detector = VisionDetector(self.camera_matrix,self.dist_coeff,self.TCP2camera_pose)
 
-        self.board = None
-        self.trigger = rospy.Publisher('/trigger', String, queue_size=1)
-        self.img_sub = rospy.Subscriber('avt_camera_img', Image, self.image_callback)
-        self.lastest_img = None
-        self.img_received = False 
-        self.bridge = CvBridge()
-
-    def image_callback(self, msg):
-        try:
-            img = self.bridge.imgmsg_to_cv2(msg, "bgr8")
-        except CvBridgeError as e:
-            print(e)
-        self.lastest_img = img.copy()
-        self.img_received = True 
-
-    def trigger_image(self):
-        self.trigger.publish(String('Hi!'))
-        while(not self.img_received):
-            continue
-        self.img_received = False
+        self.camera = AvtCamera()
 
     def serviceHandler(self,msg):
         rospy.loginfo("Request: {}".format(msg.request))
@@ -58,8 +40,9 @@ class RobotService:
             return TaskPlanningResponse(feedback)
         
         elif msg.request == 'chessboard state':
-            fen_string,self.chessboard = self.chessboardState()
-            return TaskPlanningResponse(fen_string)
+            self.manipulator.moveRobot([self.base2TCP_pose])
+            self.chessboard = self.chessboardState('state')
+            return TaskPlanningResponse('yes')
 
         elif msg.request[:4] == 'step':
             detail = msg.request.split(':')
@@ -78,18 +61,18 @@ class RobotService:
 
     def detectChessboard(self):
         self.manipulator.moveRobotJoint([[90,-135,90,-70,-90,0.0]])
-        self.trigger_image()
-        #self.lastest_img = self.takeImage("standby.jpg")
+        self.camera.trigger_image()
+        #self.camera.lastest_img = self.takeImage("standby.jpg")
         # sleep 1 seconds. Wait robot to stablize.
         rospy.sleep(1)
         base2TCP_pose = self.manipulator.currentRobotPose()
-        base2chessboard_pose = self.detector.chessboardPose(self.lastest_img,base2TCP_pose)
+        base2chessboard_pose = self.detector.chessboardPose(self.camera.lastest_img,base2TCP_pose)
         self.manipulator.moveRobot(self.__takeImagePose(base2chessboard_pose))
         self.base2TCP_pose = self.manipulator.currentRobotPose()
-        self.trigger_image()
-        #self.lastest_img = self.takeImage("217.jpg")
-        self.base2chessboard_pose = self.detector.chessboardSquare(self.lastest_img, self.base2TCP_pose)
-        print(self.base2chessboard_pose.to_string())
+        self.camera.trigger_image()
+        #self.camera.lastest_img = self.takeImage("217.jpg")
+        square_dict, self.base2chessboard_pose = self.detector.chessboardSquare(self.camera.lastest_img, self.base2TCP_pose)
+        self.chessboardState(square_dict)
         self.__gameStandby()
         self.manipulator.moveRobotJoint([self.standby])
         return "Detection accomplished"
@@ -108,14 +91,14 @@ class RobotService:
         inv_TCP2camera_pose = Trans3D.from_tfmatrix(inv(self.TCP2camera_pose.to_tfmatrix()))
         return [base2chessboard_pose * point_pose * inv_TCP2camera_pose]
  
-    def chessboardState(self):
-        image = self.takeImage(file_name)
-        board = self.detector.chessboardState(image)
-        if self.board == None:
-            self.board = self.__humanCheck(board)
-        else:
-            self.board = self.__systemCheck(board)
-        return self.detector.chessboardTOFen(self.board)
+    def chessboardState(self,message):
+        rospy.wait_for_service('board_state')
+        try:
+           board_state = rospy.ServiceProxy('board_state', TaskPlanning)
+           resp1 = board_state(message)
+           return resp1.feedback
+        except rospy.ServiceException as e:
+           print("Service call failed: %s"%e)
 
     def __humanCheck(self,board):
         pass
@@ -149,8 +132,8 @@ class RobotService:
     def __takingImage(self):
         self.manipulator.moveRobot([self.base2TCP_pose])
         rospy.sleep(1)
-        self.trigger_image()
-        #self.lastest_img = self.takeImage('217.jpg')
+        self.camera.trigger_image()
+        #self.camera.lastest_img = self.takeImage('217.jpg')
         return None
 
     def collectData(self,piece):
@@ -164,25 +147,25 @@ class RobotService:
                     if word == 'h' and num == 1:
                         self.__takingImage()
                         sq1, sq2 = word + str(num), word + str(num+1)
-                        self.detector.crop_image(self.lastest_img,[sq1,sq2],path)
+                        self.detector.crop_image(self.camera.lastest_img,[sq1,sq2],path)
                     elif num == 1:
                         sq1, pre_sq1 = word+str(num), sq1
                         self.pickAndPlace(piece,pre_sq1,sq1)
                         sq2, pre_sq2 = word+str(num+1), sq2
                         self.pickAndPlace(piece,pre_sq2,sq2)
                         self.__takingImage()
-                        self.detector.crop_image(self.lastest_img,[sq1,sq2],path)
+                        self.detector.crop_image(self.camera.lastest_img,[sq1,sq2],path)
                     else:
                         sq2, pre_sq2 = word+str(num+1), sq2
                         self.pickAndPlace(piece,pre_sq2,sq2)
                         sq1, pre_sq1 = word+str(num), sq1
                         self.pickAndPlace(piece,pre_sq1,sq1)
                         self.__takingImage()
-                        self.detector.crop_image(self.lastest_img,[sq1,sq2],path)
+                        self.detector.crop_image(self.camera.lastest_img,[sq1,sq2],path)
         else:
             self.__takingImage()
             sq1 = 'h1'
-            self.detector.crop_image(self.lastest_img,[sq1],path)
+            self.detector.crop_image(self.camera.lastest_img,[sq1],path)
             for word in alf_list:
                 for num in range(1,9):
                     if word == 'h' and num == 1:continue
@@ -190,10 +173,9 @@ class RobotService:
                         sq1, pre_sq1 = word+str(num), sq1
                         self.pickAndPlace(piece,pre_sq1,sq1)
                         self.__takingImage()
-                        self.detector.crop_image(self.lastest_img,[sq1],path)
-
-    
+                        self.detector.crop_image(self.camera.lastest_img,[sq1],path)
         return 'Finished'
+
     def toSquare(self,square):
         square_pose = self.__squarePose(square)
         self.manipulator.moveRobot([square_pose])
