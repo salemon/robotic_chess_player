@@ -62,17 +62,14 @@ class RobotService:
     def detectChessboard(self):
         self.manipulator.moveRobotJoint([[90,-135,90,-70,-90,0.0]])
         self.camera.trigger_image()
-        #self.camera.lastest_img = self.takeImage("standby.jpg")
-        # sleep 1 seconds. Wait robot to stablize.
         rospy.sleep(1)
         base2TCP_pose = self.manipulator.currentRobotPose()
         base2chessboard_pose = self.detector.chessboardPose(self.camera.lastest_img,base2TCP_pose)
         self.manipulator.moveRobot(self.__takeImagePose(base2chessboard_pose))
         self.base2TCP_pose = self.manipulator.currentRobotPose()
         self.camera.trigger_image()
-        #self.camera.lastest_img = self.takeImage("217.jpg")
         square_dict, self.base2chessboard_pose = self.detector.chessboardSquare(self.camera.lastest_img, self.base2TCP_pose)
-        self.chessboardState(square_dict)
+        #self.chessboardState(str(square_dict))
         self.__gameStandby()
         self.manipulator.moveRobotJoint([self.standby])
         return "Detection accomplished"
@@ -85,7 +82,6 @@ class RobotService:
         return None
 
     def __takeImagePose(self,base2chessboard_pose):
-        # calculate the pose for camera to take image
         z = (self.camera_matrix[0][0] * (-0.18)) / (400 - self.camera_matrix[0][2])
         point_pose = Trans3D.from_tvec(np.array([0.18,0.18,-z+0.1338]))
         inv_TCP2camera_pose = Trans3D.from_tfmatrix(inv(self.TCP2camera_pose.to_tfmatrix()))

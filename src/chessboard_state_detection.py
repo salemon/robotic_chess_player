@@ -26,7 +26,7 @@ class ChessboardStateDetection:
             return TaskPlanningResponse('Receive square image dictionary') 
     
     def state(self):
-        print(self.square_dict['h1'])
+     
         parent_dir = os.getcwd()
         path = os.path.join(parent_dir, '_')
         os.mkdir(path)

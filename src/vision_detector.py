@@ -33,9 +33,8 @@ class VisionDetector:
         return base2TCP_pose * self.TCP2camera_pose * camera2chessbaord_pose
         
     def chessboardSquare(self,image,base2TCP_pose):
-        square_dict,camera2chessbaord_pose = self.pose_estimator.estimateSquare(image)
-        print(square_dict['h1'])
-        return str(square_dict), self.__adjustError(camera2chessbaord_pose,base2TCP_pose)
+        self.square_dict,camera2chessbaord_pose = self.pose_estimator.estimateSquare(image)
+        return self.square_dict, self.__adjustError(camera2chessbaord_pose,base2TCP_pose)
         
     def chessboardState(self,image):
         board = self.state_detector.detecting(image)
