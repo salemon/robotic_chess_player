@@ -7,8 +7,9 @@ import cv2
 import numpy as np
 import torch
 from torchvision import transforms
+import rospkg
 
-class NNvision:
+class NNVision:
     #ros service, request: string, response: string
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     processing = transforms.Compose([
@@ -25,16 +26,18 @@ class NNvision:
         self.camera_matrix = np.array(K).reshape((3,3))
         D = rospy.get_param('/camera_calibration/D')
         self.dist_coeff = np.array(D)
-        
+        rospack = rospkg.RosPack()
+        nn_path = rospack.get_path('robotic_chess_player')+'/src/best.pth'
         self.model = self.load_model(nn_path)
-        self.board = None
+        rospy.loginfo('neural network is ready to go!')
+
     def serviceHandler(self,msg):
         if msg.request ==  'state':
             state = self.detectingState()
             return TaskPlanningResponse(state) 
         else:
             self.square_dict = eval(msg.request)
-            return TaskPlanningResponse('Receive square image dictionary') 
+            return TaskPlanningResponse('neural network Received square info') 
     
     @staticmethod
     def load_model(path):
@@ -90,7 +93,5 @@ class NNvision:
 
 if __name__ == "__main__":
     rospy.init_node('neural_network')
-    robot = ChessboardStateDetection()
+    robot = NNVision()
     rospy.spin()
-    #cv2.imshow("img",img)
-    #cv2.waitKey(0)

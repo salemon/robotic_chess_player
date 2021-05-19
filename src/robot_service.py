@@ -19,14 +19,7 @@ class RobotService:
 
         self.server = rospy.Service('robot_service',TaskPlanning,self.serviceHandler)
         self.manipulator = MotionPlanner()
-
-        K = rospy.get_param('/camera_calibration/K')
-        self.camera_matrix = np.array(K).reshape((3,3))
-        D = rospy.get_param('/camera_calibration/D')
-        self.dist_coeff = np.array(D)
-        self.TCP2camera_pose = Trans3D.from_ROSParameterServer("/hand_eye_position")
-        self.detector = VisionDetector(self.camera_matrix,self.dist_coeff,self.TCP2camera_pose)
-
+        self.detector = VisionDetector()
         self.camera = AvtCamera()
 
     def serviceHandler(self,msg):
@@ -44,7 +37,7 @@ class RobotService:
             self.chessboard = self.chessboardState('state')
             return TaskPlanningResponse('yes')
 
-        elif msg.request[:4] == 'step':
+        elif msg.request[:4] == 'move:':
             detail = msg.request.split(':')
             self.carryOutOrder(detail[1])
             return TaskPlanningResponse('Done')
@@ -54,24 +47,22 @@ class RobotService:
             self.collectData(detail[1])
             return TaskPlanningResponse('Done')
         
-        elif msg.request[:4] == 'move':
+        elif msg.request[:2] == 'to':
             detail = msg.request.split(':')
             self.toSquare(detail[1])
             return TaskPlanningResponse('Done')
 
     def detectChessboard(self):
         self.manipulator.moveRobotJoint([[90,-135,90,-70,-90,0.0]])
-        self.camera.trigger_image()
         rospy.sleep(1)
         base2TCP_pose = self.manipulator.currentRobotPose()
-        base2chessboard_pose = self.detector.chessboardPose(self.camera.lastest_img,base2TCP_pose)
-        self.manipulator.moveRobot(self.__takeImagePose(base2chessboard_pose))
+        base2chessboard_pose = self.detector.takeImagePose(base2TCP_pose)
+        self.manipulator.moveRobot(base2chessboard_pose)
+        rospy.sleep(1)
         self.base2TCP_pose = self.manipulator.currentRobotPose()
-        self.camera.trigger_image()
-        square_dict, self.base2chessboard_pose = self.detector.chessboardSquare(self.camera.lastest_img, self.base2TCP_pose)
-        #self.chessboardState(str(square_dict))
+        self.base2chessboard_pose = self.detector.poseAndSquare(self.base2TCP_pose)
         self.spot = self.__dropPieceSpot()
-        self.__gameStandby()
+        self.standby = self.__gameStandby()
         self.manipulator.moveRobotJoint([self.standby])
         return "Detection accomplished"
 
@@ -83,16 +74,9 @@ class RobotService:
 
     def __gameStandby(self):
         tvect = self.base2TCP_pose.to_tvec()
-        x, y = tvect[0] - 0.132, tvect[1]
-        angle = np.arccos(x / norm(np.array([x,y]))) / np.pi * 180
-        self.standby = [angle,-135,90,-70,-90,0.0]
-        return None
-
-    def __takeImagePose(self,base2chessboard_pose):
-        z = (self.camera_matrix[0][0] * (-0.18)) / (400 - self.camera_matrix[0][2])
-        point_pose = Trans3D.from_tvec(np.array([0.18,0.18,-z+0.1338]))
-        inv_TCP2camera_pose = Trans3D.from_tfmatrix(inv(self.TCP2camera_pose.to_tfmatrix()))
-        return [base2chessboard_pose * point_pose * inv_TCP2camera_pose]
+        x = np.array([tvect[0] - 0.132, tvect[1]])
+        angle = np.arccos(-(x / norm(x))[0]) / np.pi * 180
+        return [angle,-135,90,-70,-90,0.0]
  
     def chessboardState(self,message):
         rospy.wait_for_service('board_state')

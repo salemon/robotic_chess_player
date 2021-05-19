@@ -2,15 +2,16 @@
 import sys
 import numpy as np
 import rospy
-import rospkg
+
 import geometry_msgs.msg
 from std_msgs.msg import String
 from transformation import Trans3D
 import moveit_commander
 import moveit_msgs.msg
 
+import rospkg
 rospack = rospkg.RosPack()
-path = rospack.get_path('execution_node')
+path = rospack.get_path('robotic_chess_player')
 gripper_path = path+'/include/robotiq_hande_ros_driver'
 sys.path.append(gripper_path)
 from robotiq_hande_ros_driver.srv import gripper_service
