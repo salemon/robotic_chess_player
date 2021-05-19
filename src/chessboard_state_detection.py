@@ -36,7 +36,7 @@ class NNVision:
             state = self.detectingState()
             return TaskPlanningResponse(state) 
         else:
-            self.square_dict = eval(msg.request)
+            self.square = eval(msg.request)
             return TaskPlanningResponse('neural network Received square info') 
     
     @staticmethod
@@ -48,9 +48,9 @@ class NNVision:
 
     def __undistortImage(self):
         self.camera.trigger_image()
-        h,  w = self.camera.latest_img.shape[:2]
+        h,  w = self.camera.lastest_img.shape[:2]
         newcameramtx, roi=cv2.getOptimalNewCameraMatrix(self.camera_matrix,self.dist_coeff,(w,h),1,(w,h))
-        dst = cv2.undistort(self.camera.latest_img, self.camera_matrix, self.dist_coeff, None, newcameramtx)
+        dst = cv2.undistort(self.camera.lastest_img, self.camera_matrix, self.dist_coeff, None, newcameramtx)
         x,y,w,h = roi
         dst = dst[y:y+h, x:x+w]
         return dst
@@ -64,9 +64,8 @@ class NNVision:
         return msg[:-1]
 
     def detectingState(self):
-        image = self.__undistortImage(self.camera.lastest_img)
-        col = {'A':7,'B':6,'C':5,'D':4,'E':3,'F':2,'G':1,'H':0}
-        row = {'1':0,'2':1,'3':2,'4':3,'5':4,'6':5,'7':6,'8':7}
+        image = self.__undistortImage()
+        col = {'a':7,'b':6,'c':5,'d':4,'e':3,'f':2,'g':1,'h':0}
         class_names = ['B', 'K', 'N', 'P', 'Q', 'R', '_', 'b', 'k', 'n', 'p', 'q', 'r']
         chessboard = np.zeros((8,8),dtype=str)
         img_list,key_list,count = [],[],0
@@ -84,7 +83,7 @@ class NNVision:
                     outputs = self.model(inputs)
                     _, preds = torch.max(outputs,1)
                     for k in key_list:
-                        chessboard[row[k[1]],col[k[0]]] = class_names[preds[key_list.index(k)]]
+                        chessboard[int(k[1])-1,col[k[0]]] = class_names[preds[key_list.index(k)]]
                     img_list,key_list,count = [],[],0
                     del inputs
                     torch.cuda.empty_cache()

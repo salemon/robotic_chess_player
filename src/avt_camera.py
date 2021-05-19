@@ -22,6 +22,7 @@ class AvtCamera():
         self.img_received = True 
 
     def trigger_image(self):
+        self.img_received = False
         self.trigger.publish(String('Hi!'))
         while(not self.img_received):
             continue

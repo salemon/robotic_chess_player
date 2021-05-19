@@ -57,10 +57,14 @@ class VisionDetector:
             print("Service call failed: %s"%e)
         return self.__adjustError(camera2chessbaord_pose,base2TCP_pose)
         
-    def chessboardState(self,image):
-        board = self.state_detector.detecting(image)
-        return board
-
+    def chessboardState(self):
+        try:
+            state_msg = self.nn_client('state').feedback
+            board = np.array([list(i) for i in state_msg.split(',')])
+            return board
+        except rospy.ServiceException as e:
+            print("Service call failed: %s"%e)
+    
     def crop_image(self,image, square, path):
         image = self.__undistortImage(image)
         for sq in square:

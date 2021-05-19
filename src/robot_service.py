@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from io import BytesIO as StringIO
 import os
 import cv2
 from cv_bridge import CvBridge,CvBridgeError
@@ -20,7 +21,7 @@ class RobotService:
         self.server = rospy.Service('robot_service',TaskPlanning,self.serviceHandler)
         self.manipulator = MotionPlanner()
         self.detector = VisionDetector()
-        self.camera = AvtCamera()
+        self.board = None
 
     def serviceHandler(self,msg):
         rospy.loginfo("Request: {}".format(msg.request))
@@ -33,9 +34,8 @@ class RobotService:
             return TaskPlanningResponse(feedback)
         
         elif msg.request == 'chessboard state':
-            self.manipulator.moveRobot([self.base2TCP_pose])
-            self.chessboard = self.chessboardState('state')
-            return TaskPlanningResponse('yes')
+            fen = self.chessboardState()
+            return TaskPlanningResponse(fen)
 
         elif msg.request[:4] == 'move:':
             detail = msg.request.split(':')
@@ -66,6 +66,39 @@ class RobotService:
         self.manipulator.moveRobotJoint([self.standby])
         return "Detection accomplished"
 
+    def chessboardState(self):
+        self.manipulator.moveRobot([self.base2TCP_pose])
+        chessboard = self.detector.chessboardState()
+        if type(self.board) == type(None):
+            chessboard = self.__humanRevise(chessboard)
+        else:
+            chessboard = self.__systemRevise(chessboard)
+            chessboard = self.__humanRevise(chessboard)
+        self.board = chessboard
+        return self.__board2fen(self.board)
+
+    def __board2fen(self,board):
+        board = np.rot90(board,2)
+        with StringIO() as s:
+            for row in board:
+                empty = 0
+                for cell in row:
+                    if cell != '_':
+                        if empty > 0:
+                            s.write(str(empty))
+                            empty = 0
+                        s.write(cell)
+                    else:
+                        empty += 1
+                if empty > 0:
+                    s.write(str(empty))
+                s.write('/')
+            # Move one position back to overwrite last '/'
+            s.seek(s.tell() - 1)
+            # If you do not have the additional information choose what to put
+            s.write(' b KQkq - 0 1')
+            return s.getvalue()
+
     def __dropPieceSpot(self):
         unit_length = 0.045/2
         x, y = (2*10-1) * unit_length, (2*8-1) * unit_length
@@ -76,21 +109,35 @@ class RobotService:
         tvect = self.base2TCP_pose.to_tvec()
         x = np.array([tvect[0] - 0.132, tvect[1]])
         angle = np.arccos(-(x / norm(x))[0]) / np.pi * 180
-        return [angle,-135,90,-70,-90,0.0]
- 
-    def chessboardState(self,message):
-        rospy.wait_for_service('board_state')
-        try:
-           board_state = rospy.ServiceProxy('board_state', TaskPlanning)
-           resp1 = board_state(message)
-           return resp1.feedback
-        except rospy.ServiceException as e:
-           print("Service call failed: %s"%e)
+        return [angle,-135,90,-70,-90,0.0]      
 
-    def __humanCheck(self,board):
-        pass
-    def __systemCheck(self,board):
-        pass       
+    def __humanRevise(self,chessboard):
+        col = {'a':7,'b':6,'c':5,'d':4,'e':3,'f':2,'g':1,'h':0}
+        print(chessboard)
+        while True:
+            ready = raw_input('Are there any piece needs to revise? ')
+            try:
+                if ready != '':
+                    square,piece = ready.split(' ')
+                    chessboard[int(square[1])-1,col[square[0]]] = piece
+                    print(chessboard)
+                else:break
+            except:
+                continue
+                
+        return chessboard
+    
+    def __systemRevise(self,chessboard):
+        print('here')
+        try:
+            for row in range(8):
+                for col in range(8):
+                    if not chessboard[row,col].isupper() and self.board[row,col].islower() and chessboard[row,col] != self.board[row,col]: 
+                        chessboard[row,col] = self.board[row,col]
+                else:continue 
+        except TypeError:
+            pass
+        return chessboard
 
     def squareToIndex(self,square):
         alf_dict = {'h':0,'g':1,'f':2,'e':3,'d':4,'c':5,'b':6,'a':7}
