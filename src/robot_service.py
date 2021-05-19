@@ -37,7 +37,7 @@ class RobotService:
             fen = self.chessboardState()
             return TaskPlanningResponse(fen)
 
-        elif msg.request[:4] == 'move:':
+        elif msg.request[:4] == 'move':
             detail = msg.request.split(':')
             self.carryOutOrder(detail[1])
             return TaskPlanningResponse('Done')
@@ -128,7 +128,6 @@ class RobotService:
         return chessboard
     
     def __systemRevise(self,chessboard):
-        print('here')
         try:
             for row in range(8):
                 for col in range(8):
@@ -155,12 +154,11 @@ class RobotService:
             if capturing == 'yes':
                 #b3c4,yes,no
                 piece, raiseup_height = self.__raiseUpHeight(end,'spot','capturing')
-                print('here')
-                self.pickAndPlace('R',end,'spot',raiseup_height)
+                self.pickAndPlace(piece,end,'spot',raiseup_height)
                 piece,raiseup_height = self.__raiseUpHeight(start,end,'move')
-                self.pickAndPlace('q',start,end,raiseup_height)
-                self.manipulator.moveRobotJoint([self.standby])
-                pass
+                self.pickAndPlace(piece,start,end,raiseup_height)
+                print(self.standby)
+                self.manipulator.moveRobotJoint([[90,-135,90,-70,-90,0.0]])
             elif castling == 'yes':
                 'e1g1,no,yes'
                 pass
@@ -168,13 +166,6 @@ class RobotService:
                 'e2e4,no,no'
                 pass
         return 'Finished'
-    
-    def __takingImage(self):
-        self.manipulator.moveRobot([self.base2TCP_pose])
-        rospy.sleep(1)
-        self.camera.trigger_image()
-        #self.camera.lastest_img = self.takeImage('217.jpg')
-        return None
 
     def collectData(self,piece):
         parent_dir = os.getcwd()
@@ -244,20 +235,19 @@ class RobotService:
         return pickup_pose, dropoff_pose, pickup_height
 
     def __raiseUpHeight(self,start,end,action):
-        '''
-        row = [start[0], end[0]]
-        col = [start[1], end[1]]
-        chessboard = self.chessboard.copy()
+        start = self.squareToIndex(start)
+        chessboard = self.board.copy()
         piece = chessboard[start[0]][start[1]]
-        '''
-        piece = 'q'
         if action == 'capturing':
-            return piece, 0.125
+            return piece, 0.11
         if action == 'castling':
             return piece, 0.065
         else:
             piece_height = {'k':0.105,'q':0.095,'b':0.08,'n':0.06,'r':0.06,'p':0.05,'_':0.01}
             if piece.lower() == 'n':
+                end = self.squareToIndex(end)
+                row = [start[0], end[0]]
+                col = [start[1], end[1]]
                 chessboard[start[0]][start[1]] = '_'
                 passing_area = chessboard[min(row):max(row)+1,min(col):max(col)+1]
                 return piece, max([piece_height[i.lower()] for i in passing_area.reshape((passing_area.size,))])
