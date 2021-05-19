@@ -70,9 +70,16 @@ class RobotService:
         self.camera.trigger_image()
         square_dict, self.base2chessboard_pose = self.detector.chessboardSquare(self.camera.lastest_img, self.base2TCP_pose)
         #self.chessboardState(str(square_dict))
+        self.spot = self.__dropPieceSpot()
         self.__gameStandby()
         self.manipulator.moveRobotJoint([self.standby])
         return "Detection accomplished"
+
+    def __dropPieceSpot(self):
+        unit_length = 0.045/2
+        x, y = (2*10-1) * unit_length, (2*8-1) * unit_length
+        point = Trans3D.from_tvec(np.array([x, y, 0]))
+        return self.base2chessboard_pose * point
 
     def __gameStandby(self):
         tvect = self.base2TCP_pose.to_tvec()
@@ -105,24 +112,30 @@ class RobotService:
         alf_dict = {'h':0,'g':1,'f':2,'e':3,'d':4,'c':5,'b':6,'a':7}
         return (int(square[1])-1, alf_dict[square[0]])
 
-    def carryOutOrder(self,detail):
-        square,capturing,castling = detail.split(',')
-        start, end = self.squareToIndex(square[:2]), self.squareToIndex(square[2:])
-        pickup_dict = {'k':0.065,'q':0.065,'b':0.04,'n':0.037,'r':0.037,'p':0.03}
-        if capturing == 'yes':
-            pass
-        elif castling == 'yes':
+    def carryOutOrder(self,order):
+        #decode order
+        detail = order.split(',')
+        if len(detail) == 4:
+            #change piece 
             pass
         else:
-            #piece = (self.chessboard[start[0]][start[1]]).lower()
-            piece = 'k'
-            pickup_height = pickup_dict[piece]
-            if piece != 'n':
-                raiseup_height = pickup_height + 0.007
-            if piece == 'n':
-                raiseup_height = self.raiseUpKnight(start,end) + pickup_height
-            waypoints = self.pickAndPlaceWaypoints(start,end,pickup_height,raiseup_height)
-            self.manipulator.goStraightToPose(waypoints)
+            step,capturing,castling = detail
+            start,end = step[:2],step[2:]
+            if capturing == 'yes':
+                #b3c4,yes,no
+                piece, raiseup_height = self.__raiseUpHeight(end,'spot','capturing')
+                print('here')
+                self.pickAndPlace('R',end,'spot',raiseup_height)
+                piece,raiseup_height = self.__raiseUpHeight(start,end,'move')
+                self.pickAndPlace('q',start,end,raiseup_height)
+                self.manipulator.moveRobotJoint([self.standby])
+                pass
+            elif castling == 'yes':
+                'e1g1,no,yes'
+                pass
+            else:
+                'e2e4,no,no'
+                pass
         return 'Finished'
     
     def __takingImage(self):
@@ -179,11 +192,14 @@ class RobotService:
 
     def __squarePose(self,square):
         "x : alf , y : num"
-        unit_length = 0.045/2
-        alf_dict = {'h':1,'g':2,'f':3,'e':4,'d':5,'c':6,'b':7,'a':8}
-        x, y = (2*alf_dict[square[0]]-1) * unit_length, (2*(int(square[1]))-1) * unit_length
-        point = Trans3D.from_tvec(np.array([x, y, 0]))
-        return self.base2chessboard_pose * point
+        if square == 'spot':
+            return self.spot
+        else:
+            unit_length = 0.045/2
+            alf_dict = {'h':1,'g':2,'f':3,'e':4,'d':5,'c':6,'b':7,'a':8}
+            x, y = (2*alf_dict[square[0]]-1) * unit_length, (2*(int(square[1:]))-1) * unit_length
+            point = Trans3D.from_tvec(np.array([x, y, 0]))
+            return self.base2chessboard_pose * point
 
     def __aboveSquarePose(self, square_pose):
         point = Trans3D.from_tvec(np.array([0,0,-0.1]))
@@ -196,42 +212,36 @@ class RobotService:
         dropoff_pose = end_pose * Trans3D.from_tvec(np.array([0,0,-pickup_height + 0.0006]))
         return pickup_pose, dropoff_pose, pickup_height
 
-    def __raiseUpKight(self,start,end):
-        piece_height = {'k':0.105,'q':0.095,'b':0.08,'n':0.06,'r':0.06,'p':0.05,'_':0.01}
+    def __raiseUpHeight(self,start,end,action):
+        '''
         row = [start[0], end[0]]
         col = [start[1], end[1]]
         chessboard = self.chessboard.copy()
-        chessboard[start[0]][start[1]] = '_'
-        passing_area = chessboard[min(row):max(row)+1,min(col):max(col)+1]
-        return max([piece_height[i.lower()] for i in passing_area.reshape((passing_area.size,))])
+        piece = chessboard[start[0]][start[1]]
+        '''
+        piece = 'q'
+        if action == 'capturing':
+            return piece, 0.125
+        if action == 'castling':
+            return piece, 0.065
+        else:
+            piece_height = {'k':0.105,'q':0.095,'b':0.08,'n':0.06,'r':0.06,'p':0.05,'_':0.01}
+            if piece.lower() == 'n':
+                chessboard[start[0]][start[1]] = '_'
+                passing_area = chessboard[min(row):max(row)+1,min(col):max(col)+1]
+                return piece, max([piece_height[i.lower()] for i in passing_area.reshape((passing_area.size,))])
+            else: return piece, 0.01
     
     def __raiseUpPose(self,raiseup_height,start_pose,end_pose):
         ra_s_pose = start_pose * Trans3D.from_tvec(np.array([0,0,-raiseup_height]))
         ra_e_pose = end_pose * Trans3D.from_tvec(np.array([0,0,-raiseup_height]))
         return ra_s_pose,ra_e_pose
 
-    def pickAndPlace(self, piece, start, end):
-        '''pick and place piece from one square to another
-        which piece, start square and end square
-        1. need to calculate the gripper above the piece(heigher than during moving)
-        2. need the pick up height at start square
-        3. raise up height for moving at square square
-            3.1 if raise up is not knight raiseup certain amout
-            3.2 else: check the 
-        4. raise up height for moving at end square
-        5. drop off height at end square end square
-        6. gripper above the piece at end square
-         '''
+    def pickAndPlace(self,piece, start, end, raiseup_height):
         s_pose, e_pose = self.__squarePose(start), self.__squarePose(end)
         ab_s_pose, ab_e_pose = self.__aboveSquarePose(s_pose), self.__aboveSquarePose(e_pose)
         pickup_pose, dropoff_pose, pickup_height = self.__pickDropPose(piece,s_pose,e_pose)
-        '''
-        if piece != 'n':
-            raiseup_height = pickup_height + 0.01
-        else:
-            raiseup_height = self.__raiseUpKight(start,end)
-        '''
-        raiseup_height = pickup_height + 0.01
+        raiseup_height = pickup_height + raiseup_height
         ra_s_pose,ra_e_pose = self.__raiseUpPose(raiseup_height,s_pose,e_pose)
         waypoints = [[ab_s_pose, pickup_pose], 0,[ra_s_pose, ra_e_pose,dropoff_pose], 1, [ab_e_pose]]
         self.manipulator.moveRobotWaypoints(waypoints)
