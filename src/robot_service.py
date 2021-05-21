@@ -8,7 +8,6 @@ from std_msgs.msg import String
 from robotic_chess_player.srv import TaskPlanning,TaskPlanningResponse
 import numpy as np
 from numpy.linalg import inv,norm
-from avt_camera import *
 from motion_planning import *
 from vision_detector import *
 from transformation import Trans3D
