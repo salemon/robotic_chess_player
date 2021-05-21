@@ -3,11 +3,9 @@ from io import BytesIO as StringIO
 import os
 import cv2
 import rospy
-from sensor_msgs.msg import Image
-from std_msgs.msg import String
 from robotic_chess_player.srv import TaskPlanning,TaskPlanningResponse
 import numpy as np
-from numpy.linalg import inv,norm
+from numpy.linalg import norm
 from motion_planning import *
 from vision_detector import *
 from transformation import Trans3D
@@ -53,6 +51,10 @@ class RobotService:
         elif msg.request[:2] == 'mt':
             detail = msg.request.split(':')
             self.motionTest(detail[1])
+            return TaskPlanningResponse('Done')
+
+        elif msg.request == 'new game':
+            self.board = None
             return TaskPlanningResponse('Done')
 
     def detectChessboard(self):
@@ -157,7 +159,6 @@ class RobotService:
             step,capturing,castling = detail
             start,end = step[:2],step[2:]
             if capturing == 'yes':
-                #b3c4,yes,no
                 piece, raiseup_height = self.__raiseUpHeight(end,'spot','capturing')
                 self.pickAndPlace(piece,end,'spot',raiseup_height)
                 piece,raiseup_height = self.__raiseUpHeight(start,end,'move')
