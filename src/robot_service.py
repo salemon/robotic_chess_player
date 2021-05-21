@@ -2,7 +2,6 @@
 from io import BytesIO as StringIO
 import os
 import cv2
-from cv_bridge import CvBridge,CvBridgeError
 import rospy
 from sensor_msgs.msg import Image
 from std_msgs.msg import String
@@ -50,6 +49,11 @@ class RobotService:
         elif msg.request[:2] == 'to':
             detail = msg.request.split(':')
             self.toSquare(detail[1])
+            return TaskPlanningResponse('Done')
+        
+        elif msg.request[:2] == 'mt':
+            detail = msg.request.split(':')
+            self.motionTest(detail[1])
             return TaskPlanningResponse('Done')
 
     def detectChessboard(self):
@@ -101,7 +105,7 @@ class RobotService:
 
     def __dropPieceSpot(self):
         unit_length = 0.045/2
-        x, y = (2*10-1) * unit_length, (2*8-1) * unit_length
+        x, y = (2*11-1) * unit_length, (2*8-1) * unit_length
         point = Trans3D.from_tvec(np.array([x, y, 0]))
         return self.base2chessboard_pose * point
 
@@ -109,7 +113,7 @@ class RobotService:
         tvect = self.base2TCP_pose.to_tvec()
         x = np.array([tvect[0] - 0.132, tvect[1]])
         angle = np.arccos(-(x / norm(x))[0]) / np.pi * 180
-        return [angle,-135,90,-70,-90,0.0]      
+        return [float(angle),-135,90,-70,-90,0.0]      
 
     def __humanRevise(self,chessboard):
         col = {'a':7,'b':6,'c':5,'d':4,'e':3,'f':2,'g':1,'h':0}
@@ -146,8 +150,10 @@ class RobotService:
         #decode order
         detail = order.split(',')
         if len(detail) == 4:
-            #change piece 
-            pass
+            step,capturing,castling = detail[:3] 
+            start,end = step[:2],step[2:]
+            piece,raiseup_height = self.__raiseUpHeight(start,end,'move')
+            self.pickAndPlace(piece,start,end,raiseup_height)
         else:
             step,capturing,castling = detail
             start,end = step[:2],step[2:]
@@ -157,15 +163,28 @@ class RobotService:
                 self.pickAndPlace(piece,end,'spot',raiseup_height)
                 piece,raiseup_height = self.__raiseUpHeight(start,end,'move')
                 self.pickAndPlace(piece,start,end,raiseup_height)
-                print(self.standby)
-                self.manipulator.moveRobotJoint([[90,-135,90,-70,-90,0.0]])
             elif castling == 'yes':
-                'e1g1,no,yes'
-                pass
+                if step == 'e8g8':
+                    piece,raiseup_height = self.__raiseUpHeight('h8','f8','move')
+                    self.pickAndPlace(piece,'h8','f8',raiseup_height)
+                    self.__updateState(piece,'h8','f8')
+                else:
+                    piece,raiseup_height = self.__raiseUpHeight('a8','d8','move')
+                    self.pickAndPlace(piece,'a8','d8',raiseup_height)
+                    self.__updateState(piece,'a8','d8')
+                piece,raiseup_height = self.__raiseUpHeight(start,end,'castling')
+                self.pickAndPlace(piece,start,end,raiseup_height)
             else:
-                'e2e4,no,no'
-                pass
+                piece,raiseup_height = self.__raiseUpHeight(start,end,'move')
+                self.pickAndPlace(piece,start,end,raiseup_height)
+            self.manipulator.moveRobotJoint([[90,-135,90,-70,-90,0.0]])
+        self.__updateState(piece,start,end)
         return 'Finished'
+    
+    def __updateState(self,piece,start,end):
+        col = {'a':7,'b':6,'c':5,'d':4,'e':3,'f':2,'g':1,'h':0}
+        self.board[int(end[1])-1,col[end[0]]] = piece
+        self.board[int(start[1])-1,col[start[0]]] = '_'
 
     def collectData(self,piece):
         parent_dir = os.getcwd()
@@ -208,8 +227,15 @@ class RobotService:
         return 'Finished'
 
     def toSquare(self,square):
-        square_pose = self.__squarePose(square)
-        self.manipulator.moveRobot([square_pose])
+        square = square.split(',')
+        square_pose = self.__squarePose(square[0])
+        print('square translation: ',square_pose.to_tvec())
+        if len(square) == 1: 
+            self.manipulator.moveRobot([square_pose])
+        elif len(square) ==  2:
+            pickup_height = float(square[1])
+            pickup_pose = square_pose * Trans3D.from_tvec(np.array([0,0,-pickup_height]))
+            self.manipulator.moveRobot([pickup_pose])
         return 'Done'
 
     def __squarePose(self,square):
@@ -221,14 +247,16 @@ class RobotService:
             alf_dict = {'h':1,'g':2,'f':3,'e':4,'d':5,'c':6,'b':7,'a':8}
             x, y = (2*alf_dict[square[0]]-1) * unit_length, (2*(int(square[1:]))-1) * unit_length
             point = Trans3D.from_tvec(np.array([x, y, 0]))
-            return self.base2chessboard_pose * point
+            square_pose = (self.base2chessboard_pose * point).to_tfmatrix()
+            square_pose[2,3] = 0.1801
+            return Trans3D.from_tfmatrix(square_pose)
 
     def __aboveSquarePose(self, square_pose):
         point = Trans3D.from_tvec(np.array([0,0,-0.1]))
         return square_pose * point
 
     def __pickDropPose(self,piece,start_pose,end_pose):
-        pickup_dict = {'k':0.062,'q':0.059,'b':0.0475,'n':0.0358,'r':0.0327,'p':0.025}
+        pickup_dict = {'k':0.06,'q':0.0585,'b':0.04,'n':0.032,'r':0.032,'p':0.023}
         pickup_height = pickup_dict[piece.lower()]
         pickup_pose = start_pose * Trans3D.from_tvec(np.array([0,0,-pickup_height]))
         dropoff_pose = end_pose * Trans3D.from_tvec(np.array([0,0,-pickup_height + 0.0006]))
@@ -239,11 +267,11 @@ class RobotService:
         chessboard = self.board.copy()
         piece = chessboard[start[0]][start[1]]
         if action == 'capturing':
-            return piece, 0.11
+            return piece, 0.10
         if action == 'castling':
-            return piece, 0.065
+            return piece, 0.055
         else:
-            piece_height = {'k':0.105,'q':0.095,'b':0.08,'n':0.06,'r':0.06,'p':0.05,'_':0.01}
+            piece_height = {'k':0.10,'q':0.085,'b':0.07,'n':0.055,'r':0.055,'p':0.044,'_':0.01}
             if piece.lower() == 'n':
                 end = self.squareToIndex(end)
                 row = [start[0], end[0]]
@@ -258,15 +286,34 @@ class RobotService:
         ra_e_pose = end_pose * Trans3D.from_tvec(np.array([0,0,-raiseup_height]))
         return ra_s_pose,ra_e_pose
 
+    def __strightPath(self,ra_s_pose,ra_e_pose):
+        ra_s_tfmtx,ra_e_tfmtx = ra_s_pose.to_tfmatrix(),ra_e_pose.to_tfmatrix()
+        tfmtx_distance = ra_e_tfmtx - ra_s_tfmtx
+        ra_s_tvec,ra_e_tvec = ra_s_pose.to_tvec(),ra_e_pose.to_tvec()
+        step = max(1, np.rint(norm(ra_s_tvec - ra_e_tvec)/0.09))
+        tfmtx_step = tfmtx_distance / step
+        path_pose, away_from_start = [ra_s_pose], 0
+        while step > 0:
+            ra_s_tfmtx += tfmtx_step
+            pose = Trans3D.from_tfmatrix(ra_s_tfmtx)
+            path_pose.append(pose)
+            step -= 1
+        return path_pose
+
     def pickAndPlace(self,piece, start, end, raiseup_height):
         s_pose, e_pose = self.__squarePose(start), self.__squarePose(end)
         ab_s_pose, ab_e_pose = self.__aboveSquarePose(s_pose), self.__aboveSquarePose(e_pose)
         pickup_pose, dropoff_pose, pickup_height = self.__pickDropPose(piece,s_pose,e_pose)
         raiseup_height = pickup_height + raiseup_height
         ra_s_pose,ra_e_pose = self.__raiseUpPose(raiseup_height,s_pose,e_pose)
-        waypoints = [[ab_s_pose, pickup_pose], 0,[ra_s_pose, ra_e_pose,dropoff_pose], 1, [ab_e_pose]]
+        middle_action = self.__strightPath(ra_s_pose,ra_e_pose) + [dropoff_pose]
+        waypoints = [[ab_s_pose, pickup_pose], 0,middle_action, 1, [ab_e_pose]]
         self.manipulator.moveRobotWaypoints(waypoints)
         return None
+
+    def motionTest(self,step):
+        start,end = step[:2],step[2:]
+        self.pickAndPlace('Q',start,end,0.01)
 
 if __name__ == "__main__":
     rospy.init_node('robot_system')
