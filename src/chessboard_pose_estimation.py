@@ -56,6 +56,7 @@ class ChessboardPoseEstimation():
     def chessboard_inner_points(self):
         points = self.point_detection(self.gray)
         inner_points = []
+        img = self.img.copy()
         for p in points:
             col,row = p.ravel()
             p_color_img = self.crop_img(self.img,col,row)
@@ -63,7 +64,7 @@ class ChessboardPoseEstimation():
             if ret_1:
                 ret_2 = self.region_condition(p_clustering_gray_img)
                 if ret_2:
-                    inner_points.append([col,row])
+                    inner_points.append([col,row])           
         return inner_points
 
     @staticmethod
@@ -131,12 +132,13 @@ class ChessboardPoseEstimation():
         for i in pair:
             col,row = i.ravel()
             candi_gray = cv2.cvtColor(self.crop_img(self.img,col,row,r = 150),cv2.COLOR_BGR2GRAY)
-            if type(candi_gray) == type(None):continue 
+            if type(candi_gray) == type(None):
+                continue 
             else:
                 mean_intensity = self.histogram_mean(candi_gray)
                 if mean_intensity < brightness:
                     brightness = mean_intensity
-                    origin = np.array([col,row])
+                    origin = np.array([col,row])      
         corner, imageP = self.pClosest(inner_points,origin)
         return corner,imageP
         
@@ -166,7 +168,7 @@ class ChessboardPoseEstimation():
         camera_matrix,dist_coeff = self.camera_matrix,self.dist_coeff
         _, rotation_vector, translation_vector = cv2.solvePnP(
                 object_points, image_points, camera_matrix, dist_coeff)
-        '''
+        
         def draw(img, imgpts):
             corner = tuple(imgpts[0].ravel())
             img = cv2.line(img, corner, tuple(imgpts[1].ravel()), (255,0,0), 5)
@@ -183,7 +185,7 @@ class ChessboardPoseEstimation():
         cv2.imshow('img',img)
         cv2.waitKey(0) & 0xFF
         cv2.destroyAllWindows()
-        '''
+    
         return rotation_vector,translation_vector
 
     def estimatePose(self,image):
