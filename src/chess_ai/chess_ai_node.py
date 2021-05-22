@@ -2,16 +2,14 @@
 import chess
 import chess.engine
 import rospy
-from std_msgs.msg import String
-from chess_ai.srv import ai_service, ai_serviceResponse
+from robotic_chess_player.srv import ChessAI, ChessAIResponse
 import os
-import sys
 
 def open_chess_engine():
     path = os.getcwd()
     path = os.path.abspath(os.path.join(path, os.pardir))
     #engine_path = path+'/stockfish/stockfish-11-linux/Linux/stockfish_20011801_x64'
-    engine_path = '/home/mingyu/catkin_build_ws/src/ros-chess-agent/chess_ai/src/stockfish/stockfish-11-linux/Linux/stockfish_20011801_x64'
+    engine_path = '/home/mingyu/catkin_ws/src/robotic_chess_player/src/chess_ai/stockfish/stockfish-11-linux/Linux/stockfish_20011801_x64'
     engine = chess.engine.SimpleEngine.popen_uci(engine_path)
     extreme_setup = {'Threads': 10, 'Hash': 5000, 'Skill Level': 20,}
     engine.configure(extreme_setup)
@@ -29,15 +27,15 @@ def service_handle(msg):
         else: result = chess_move +',no'+',no'
         rospy.loginfo(msg.chess_board_state)
         rospy.loginfo(result)
-        return ai_serviceResponse(result)
-    else: return ai_serviceResponse("Game is over")
+        return ChessAIResponse(result)
+    else: return ChessAIResponse("Game is over")
 
 if __name__ =="__main__":
     try:
         rospy.init_node('Chess_AI')
         engine = open_chess_engine()
         rospy.loginfo("starting service.....")
-        s = rospy.Service('chess_ai_service', ai_service, service_handle)
+        s = rospy.Service('chess_ChessAI', ChessAI, service_handle)
         rospy.loginfo("chess ai service started")
         rospy.spin()
     except rospy.ROSInterruptException:

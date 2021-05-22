@@ -3,18 +3,18 @@ from io import BytesIO as StringIO
 import os
 import cv2
 import rospy
-from robotic_chess_player.srv import TaskPlanning,TaskPlanningResponse
+from robotic_chess_player.srv import RobotService,RobotServiceResponse
 import numpy as np
 from numpy.linalg import norm
 from motion_planning import *
 from vision_detector import *
 from transformation import Trans3D
 
-class RobotService:
+class RobotServer:
     
     def __init__(self):
 
-        self.server = rospy.Service('robot_service',TaskPlanning,self.serviceHandler)
+        self.server = rospy.Service('robot_service',RobotService,self.serviceHandler)
         self.manipulator = MotionPlanner()
         self.detector = VisionDetector()
         self.board = None
@@ -23,39 +23,39 @@ class RobotService:
         rospy.loginfo("Request: {}".format(msg.request))
         if msg.request == "to standby":
             self.manipulator.moveRobotJoint([[90,-135,90,-70,-90,0.0]])
-            return TaskPlanningResponse('Robot arrive general standby position') 
+            return RobotServiceResponse('Robot arrive general standby position') 
         
         elif msg.request == 'detect chessboard':
             feedback = self.detectChessboard()
-            return TaskPlanningResponse(feedback)
+            return RobotServiceResponse(feedback)
         
         elif msg.request == 'chessboard state':
             fen = self.chessboardState()
-            return TaskPlanningResponse(fen)
+            return RobotServiceResponse(fen)
 
         elif msg.request[:4] == 'move':
             detail = msg.request.split(':')
             self.carryOutOrder(detail[1])
-            return TaskPlanningResponse('Done')
+            return RobotServiceResponse('Done')
         
         elif msg.request[:4] == 'auto':
             detail = msg.request.split(':')
             self.collectData(detail[1])
-            return TaskPlanningResponse('Done')
+            return RobotServiceResponse('Done')
         
         elif msg.request[:2] == 'to':
             detail = msg.request.split(':')
             self.toSquare(detail[1])
-            return TaskPlanningResponse('Done')
+            return RobotServiceResponse('Done')
         
         elif msg.request[:2] == 'mt':
             detail = msg.request.split(':')
             self.motionTest(detail[1])
-            return TaskPlanningResponse('Done')
+            return RobotServiceResponse('Done')
 
         elif msg.request == 'new game':
             self.board = None
-            return TaskPlanningResponse('Done')
+            return RobotServiceResponse('Done')
 
     def detectChessboard(self):
         self.manipulator.moveRobotJoint([[90,-135,90,-70,-90,0.0]])
@@ -317,7 +317,7 @@ class RobotService:
 
 if __name__ == "__main__":
     rospy.init_node('robot_system')
-    robot = RobotService()
+    robot = RobotServer()
     rospy.spin()
     #cv2.imshow("img",img)
     #cv2.waitKey(0)
