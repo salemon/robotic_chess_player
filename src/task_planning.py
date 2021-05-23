@@ -1,60 +1,84 @@
 #!/usr/bin/env python
-import rospy
-from robotic_chess_player.srv import *
+from logging import info
+from avt_camera import *
+from vision_detector import *
+class TaskPlanning:
 
-
-def taskPlanning():
-    #init robot service's client
-    rospy.wait_for_service('robot_service')
-    robot_service = rospy.ServiceProxy('robot_service', TaskPlanning)
-    rospy.wait_for_service('chess_ai_service')
-    ai_service = rospy.ServiceProxy('chess_ai_service', ChessAI)
-    print('Place the empty chessboard on the workspace')
-    board_ready = raw_input('''Hit Enter if the chessboard is in place\nHit Ctrl+C to exit the system anytime''')
-    while not rospy.is_shutdown():
-        if board_ready == '':
-            while True:
-                action = robot_service('detect chessboard').feedback
-                if action == 'Detection accomplished':
-                    print(action)
-                    break
-                else:
-                    continue
-        elif board_ready == 'no':
-            pass
-        else:
-            raw_input("Ctrl+c to exit the system")
-            continue
+    def __init__(self):
+        #connect with robot service and chess ai 
+        #get necessary information from chess ai and robot service and sent to gui
+        rospy.init_node("task_planning_node")
+        # connect to chess ai node
+        rospy.wait_for_service('chess_ai_service')
+        self.chess_ai = rospy.ServiceProxy('chess_ai_service', ChessAI)
+        # connect to robot server node
+        rospy.wait_for_service('chess_ai_service')
+        self.robot_service = rospy.ServiceProxy('robot_service', RobotService)
+        # connect to neural network
+        rospy.wait_for_service('board_state')
+        self.nn_service = rospy.ServiceProxy('board_state', TaskPlanning)
+        # connect to GUI
+        self.info_pub = rospy.Publisher('info', String, queue_size=5)
+        self.gui_sub = rospy.Subscriber('gui_command', String, queue_size=4, callback=self.gui_callback)
+        #self.result_pub = rospy.Publisher('robot_outcome', InspectionResultPart, queue_size=2)
+        #self.reset_pub = rospy.Publisher('ai_move', Empty, queue_size=1)
         
-        while True:
-            print('Please put the chess pieces in place')
-            game_start = raw_input('Hit Enter if you want to start the game.')
-            if game_start == '':
-                human_move = raw_input('Hit Enter if you finish move')
-                while True:
-                    if human_move == '':
-                        fen = robot_service('chessboard state').feedback
-                        move = ai_service(fen).command
-                        robot_move = robot_service('move:' + move).feedback
-                        if robot_move == 'Done':
-                            human_move = raw_input('Make a move and hit enter.')
-                            continue
-                    else:
-                        human_intention = raw_input('Hit e if you want to leave this game, if not press any key: ')
-                        if human_intention == 'e':
-                            break
-                        else:
-                            human_move = raw_input('Make a move and hit enter ')
+        #self.result_part = InspectionResultPart()
+        #self.part_id = 1
+        self.locate_flag = False 
+        self.detect_flag = False
+        self.robot_flag = False
+    
+    def gui_callback(self, msg):
+        rospy.loginfo("received gui command {}".format(msg.data))
+        if msg.data == "locate chessboard":
+            self.locate_flag = True 
+        if msg.data == "detect chessboard":
+            self.detect_flag = True 
+        if msg.data == "human player finished a move":
+            self.robot_flag = True
 
-                new_game = raw_input('Hit enter if you want to start a new game or hit e to exit: ')
-                if new_game ==  '':
-                    board_ready = raw_input('Hit enter if board is moved. Type in no if board is not moved: ')
-                else:
-                    break
-            else:
-                raw_input("Ctrl+c to exit the system")
-                break
+    def run(self):
+        rospy.loginfo("task planning is running now")
+        while(not rospy.is_shutdown()):
+            if(self.locate_flag):
+                rospy.loginfo("locating chessboard position")
+                self.locating_chessboard()
+                self.locate_flag = False
+            if(self.detect_flag):
+                rospy.loginfo("detecting chessboard state")
+                self.detecting_chessboard()
+                self.detect_flag = False
+            if(self.robot_flag):
+                rospy.loginfo("robot making move")
+                self.robot_move()
+                self.robot_flag = False
+            rospy.sleep(0.1)
+    
+    def locating_chessboard(self):
+        #let the robot_service to locate the chesboard
+        #robot service return Done:square_dict if succefful
+        #else: return a fail
+        #and tell gui the locating is finished
+        info = self.robot_service('locate chessboard').feedback
+        if info[:4] ==  'Done':
 
+        rospy.loginfo(msg)
+    
+    def detecting_chessboard(self):
+        chessboard = self.robot_service('detect chessboard')
+        return a detected stat_result
+        prompt usr input and modify the stat_
+        and return back to task planning and give it back to robot service
+    
+    def robot_move():
+        self.detect Chessboard
+        self.robot_service(generate fen string)
+        self.chess_ai fen String
+        command = 'move' + next move 
+        self_robot_service(command)
+
+        
 
 
 

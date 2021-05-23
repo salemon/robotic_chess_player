@@ -25,11 +25,11 @@ class RobotServer:
             self.manipulator.moveRobotJoint([[90,-135,90,-70,-90,0.0]])
             return RobotServiceResponse('Robot arrive general standby position') 
         
-        elif msg.request == 'detect chessboard':
-            feedback = self.detectChessboard()
+        elif msg.request == 'locate chessboard':
+            feedback = self.locateChessboard()
             return RobotServiceResponse(feedback)
         
-        elif msg.request == 'chessboard state':
+        elif msg.request == 'detect chessboard':
             fen = self.chessboardState()
             return RobotServiceResponse(fen)
 
@@ -57,19 +57,22 @@ class RobotServer:
             self.board = None
             return RobotServiceResponse('Done')
 
-    def detectChessboard(self):
-        self.manipulator.moveRobotJoint([[90,-135,90,-70,-90,0.0]])
-        rospy.sleep(1)
-        base2TCP_pose = self.manipulator.currentRobotPose()
-        base2chessboard_pose = self.detector.takeImagePose(base2TCP_pose)
-        self.manipulator.moveRobot(base2chessboard_pose)
-        self.base2TCP_pose = self.manipulator.currentRobotPose()
-        rospy.sleep(1)
-        self.base2chessboard_pose = self.detector.poseAndSquare(self.base2TCP_pose)
-        self.spot = self.__dropPieceSpot()
-        self.standby = self.__gameStandby()
-        self.manipulator.moveRobotJoint([self.standby])
-        return "Detection accomplished"
+    def locateChessboard(self):
+        try:
+            self.manipulator.moveRobotJoint([[90,-135,90,-70,-90,0.0]])
+            rospy.sleep(1)
+            base2TCP_pose = self.manipulator.currentRobotPose()
+            base2chessboard_pose = self.detector.takeImagePose(base2TCP_pose)
+            self.manipulator.moveRobot(base2chessboard_pose)
+            self.base2TCP_pose = self.manipulator.currentRobotPose()
+            rospy.sleep(1)
+            self.base2chessboard_pose = self.detector.poseAndSquare(self.base2TCP_pose)
+            self.spot = self.__dropPieceSpot()
+            self.standby = self.__gameStandby()
+            self.manipulator.moveRobotJoint([self.standby])
+            return "Locating accomplished"
+        except:
+            return "Locating failed, Please clean up possible noise and re-locating again"
 
     def chessboardState(self):
         self.manipulator.moveRobot([self.base2TCP_pose])
