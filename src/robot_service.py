@@ -2,6 +2,7 @@
 from io import BytesIO as StringIO
 import os
 import cv2
+from actionlib.action_client import GoalManager
 import rospy
 from robotic_chess_player.srv import RobotService,RobotServiceResponse
 import numpy as np
@@ -23,7 +24,8 @@ class RobotServer:
     def serviceHandler(self,msg):
         rospy.loginfo("Request: {}".format(msg.request))
         if msg.request == "to standby":
-            self.manipulator.moveRobotJoint([self.standby])
+            goal = self.standby[:]
+            self.manipulator.moveRobotJoint([goal])
             return RobotServiceResponse('Robot arrive standby position') 
         
         elif msg.request == 'locate chessboard':
@@ -60,6 +62,7 @@ class RobotServer:
 
     def locateChessboard(self):
         try:
+            goal = self.standby[:]
             self.manipulator.moveRobotJoint([[90,-135,90,-70,-90,0.0]])
             rospy.sleep(1)
             base2TCP_pose = self.manipulator.currentRobotPose()
@@ -69,8 +72,8 @@ class RobotServer:
             rospy.sleep(1)
             str_square_dict, self.base2chessboard_pose = self.detector.poseAndSquare(self.base2TCP_pose)
             self.spot = self.__dropPieceSpot()
-            self.standby = self.__gameStandby()
-            self.manipulator.moveRobotJoint([self.standby])
+            goal = self.__gameStandby()
+            self.manipulator.moveRobotJoint([goal])
             return "Done;"+str_square_dict
         except:
             return "Fail"
@@ -118,7 +121,8 @@ class RobotServer:
         tvect = self.base2TCP_pose.to_tvec()
         x = np.array([tvect[0] - 0.132, tvect[1]])
         angle = np.arccos(-(x / norm(x))[0]) / np.pi * 180
-        return [float(angle),-135,90,-70,-90,0.0]      
+        self.standby = [float(angle),-135,90,-70,-90,0.0]
+        return [float(angle),-135,90,-70,-90,0.0]    
 
     def __humanRevise(self,chessboard):
         col = {'a':7,'b':6,'c':5,'d':4,'e':3,'f':2,'g':1,'h':0}
