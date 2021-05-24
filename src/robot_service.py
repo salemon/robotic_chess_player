@@ -18,20 +18,21 @@ class RobotServer:
         self.manipulator = MotionPlanner()
         self.detector = VisionDetector()
         self.board = None
+        self.standby = [90,-135,90,-70,-90,0.0]
 
     def serviceHandler(self,msg):
         rospy.loginfo("Request: {}".format(msg.request))
         if msg.request == "to standby":
-            self.manipulator.moveRobotJoint([[90,-135,90,-70,-90,0.0]])
-            return RobotServiceResponse('Robot arrive general standby position') 
+            self.manipulator.moveRobotJoint([self.standby])
+            return RobotServiceResponse('Robot arrive standby position') 
         
         elif msg.request == 'locate chessboard':
             feedback = self.locateChessboard()
             return RobotServiceResponse(feedback)
         
-        elif msg.request == 'detect chessboard':
-            fen = self.chessboardState()
-            return RobotServiceResponse(fen)
+        elif msg.request == 'to take image':
+            self.manipulator.moveRobot([self.base2TCP_pose])
+            return RobotServiceResponse('Robot arrive taking image position')
 
         elif msg.request[:4] == 'move':
             detail = msg.request.split(':')
@@ -66,13 +67,13 @@ class RobotServer:
             self.manipulator.moveRobot(base2chessboard_pose)
             self.base2TCP_pose = self.manipulator.currentRobotPose()
             rospy.sleep(1)
-            self.base2chessboard_pose = self.detector.poseAndSquare(self.base2TCP_pose)
+            str_square_dict, self.base2chessboard_pose = self.detector.poseAndSquare(self.base2TCP_pose)
             self.spot = self.__dropPieceSpot()
             self.standby = self.__gameStandby()
             self.manipulator.moveRobotJoint([self.standby])
-            return "Locating accomplished"
+            return "Done;"+str_square_dict
         except:
-            return "Locating failed, Please clean up possible noise and re-locating again"
+            return "Fail"
 
     def chessboardState(self):
         self.manipulator.moveRobot([self.base2TCP_pose])

@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 import rospy
-from robotic_chess_player.srv import TaskPlanning,TaskPlanningResponse
+from robotic_chess_player.srv import RobotService,RobotServiceResponse
 from avt_camera import *
-import os 
 import cv2
 import numpy as np
 import torch
@@ -19,9 +18,8 @@ class NNVision:
         transforms.Normalize([0.4129, 0.3452, 0.2850], [0.2895, 0.2620, 0.2181])])
 
     def __init__(self):
-        self.server = rospy.Service('board_state',TaskPlanning,self.serviceHandler)
+        self.server = rospy.Service('board_state',RobotService,self.serviceHandler)
         self.camera = AvtCamera()
-        
         K = rospy.get_param('/camera_calibration/K')
         self.camera_matrix = np.array(K).reshape((3,3))
         D = rospy.get_param('/camera_calibration/D')
@@ -34,10 +32,10 @@ class NNVision:
     def serviceHandler(self,msg):
         if msg.request ==  'state':
             state = self.detectingState()
-            return TaskPlanningResponse(state) 
+            return RobotServiceResponse(state) 
         else:
             self.square = eval(msg.request)
-            return TaskPlanningResponse('neural network Received square info') 
+            return RobotServiceResponse('neural network Received square info') 
     
     @staticmethod
     def load_model(path):
