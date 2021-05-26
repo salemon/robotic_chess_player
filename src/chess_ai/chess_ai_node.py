@@ -3,13 +3,12 @@ import chess
 import chess.engine
 import rospy
 from robotic_chess_player.srv import ChessAI, ChessAIResponse
-import os
+import rospkg
 
 def open_chess_engine():
-    path = os.getcwd()
-    path = os.path.abspath(os.path.join(path, os.pardir))
-    #engine_path = path+'/stockfish/stockfish-11-linux/Linux/stockfish_20011801_x64'
-    engine_path = '/home/mingyu/catkin_ws/src/robotic_chess_player/src/chess_ai/stockfish/stockfish-11-linux/Linux/stockfish_20011801_x64'
+    r = rospkg.RosPack()
+    path = r.get_path('robotic_chess_player')
+    engine_path = path + '/src/chess_ai/stockfish/stockfish-11-linux/Linux/stockfish_20011801_x64'
     engine = chess.engine.SimpleEngine.popen_uci(engine_path)
     extreme_setup = {'Threads': 10, 'Hash': 5000, 'Skill Level': 20,}
     engine.configure(extreme_setup)
