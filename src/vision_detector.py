@@ -17,11 +17,6 @@ class VisionDetector:
         self.TCP2camera_pose = Trans3D.from_ROSParameterServer("/hand_eye_position")
         self.pose_estimator = ChessboardPoseEstimation(self.cam_mtx, self.dist)
         self.camera = AvtCamera()
-        self.nn_client = self.__NNClient()
-    
-    def __NNClient(self):
-        rospy.wait_for_service('board_state')
-        return rospy.ServiceProxy('board_state', TaskPlanning)
 
     def takeImagePose(self, base2TCP_pose):
         self.camera.trigger_image()

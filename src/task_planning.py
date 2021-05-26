@@ -8,6 +8,7 @@ class TaskPlanning():
     def __init__(self):
         #init ros node
         rospy.init_node("task_planning_node")
+        
         #connect to chess ai service
         #self.chess_ai_service = self.initService('chess_ai_service',ChessAI)
         #connect to robot service
@@ -15,16 +16,16 @@ class TaskPlanning():
         #connect to neural network service
         self.nn_service = self.initService('board_state', RobotService)
         #subscribe message from gui
-        self.gui_sub = rospy.Subscriber('gui_command', String, queue_size=5, callback=self.gui_callback)
+        
+        self.gui_sub = rospy.Subscriber('/button', String, queue_size=5, callback=self.gui_callback)
         #set up the flag for actions
         self.locate_flag = False 
         self.detect_flag = False
         self.robot_flag = False
         self.correct_flag = False
         # publishe task planning message to gui
-        self.info_pub = rospy.Publisher('info', String, queue_size=5)
-        self.board_state_pub = rospy.Publisher('chessboard_state', String, queue_size=5)
-        self.revise_pub = rospy.Publisher('revise_board', String, queue_size=5)
+        self.info_pub = rospy.Publisher('/info_msg', String, queue_size=5)
+
     def initService(self,service_name,service_message):
         rospy.wait_for_service(service_name)
         service = rospy.ServiceProxy(service_name, service_message)
@@ -32,12 +33,12 @@ class TaskPlanning():
         return service
 
     def gui_callback(self, command):
-        rospy.loginfo("received gui command {}".format(command.data))
+        rospy.loginfo("received gui command: {}".format(command.data))
         if command.data == "locate chessboard":
             self.locate_flag = True 
         if command.data == "detect chessboard":
             self.detect_flag = True
-        if command.data[:5] == "robot":
+        if command.data[:5] == "confirm":
             self.last_state = command.data.split(';')
             self.robot_flag = True
       
@@ -50,12 +51,12 @@ class TaskPlanning():
                 self.locate_flag = False
             if self.detect_flag:
                 rospy.loginfo("detecting chessboard state")
-                state_msg = self.detecting_chessboard()
-                self.board_state_pub.publish(state_msg)
-                self.robot_service('to standby')
+                #state_msg = self.detecting_chessboard()
+                #self.board_state_pub.publish(state_msg)
+                #self.robot_service('to standby')
                 self.detect_flag = False
             if self.robot_flag:
-                self.robot_move()
+                #self.robot_move()
                 self.robot_flag = False
             rospy.sleep(0.1)
 
