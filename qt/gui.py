@@ -66,9 +66,11 @@ class Ui_MainWindow(object):
             self.board = self.__systemRevise(board)
             self.info_text.append(str(self.board)[1:-1])
         if ret == 'mov':
-            board_str = self.__msgToBoard(info)
-            self.info_text.append('Robot finished the move')
-            self.info_text.append(board_str)
+            if info != 'Game is over':
+                board_str = self.__msgToBoard(info)
+                self.info_text.append('Robot finished the move')
+                self.info_text.append(board_str)
+            else:self.info_text.append('Game is over')
         scrollbar = self.info_text.verticalScrollBar()
         rospy.sleep(0.01)
         scrollbar.setValue(scrollbar.maximum())

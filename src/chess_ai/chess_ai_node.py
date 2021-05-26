@@ -18,17 +18,20 @@ def open_chess_engine():
 def service_handle(msg):
     board = chess.Board(msg.chess_board_state)
     time_limit = chess.engine.Limit(time = 0.1)
-    if not board.is_game_over():
-        action = engine.play(board,time_limit)
-        chess_move = str(action.move)
-        if board.is_capture(action.move): result = chess_move +',yes'+',no'
-        elif board.is_castling(action.move): result = chess_move +',no'+',yes'
-        elif len(chess_move) == 5: result = chess_move[:-1] +',no'+',no' + ',' + chess_move[-1]
-        else: result = chess_move +',no'+',no'
-        rospy.loginfo(msg.chess_board_state)
-        rospy.loginfo(result)
-        return ChessAIResponse(result)
-    else: return ChessAIResponse("Game is over")
+    try:
+        if not board.is_game_over():
+            action = engine.play(board,time_limit)
+            chess_move = str(action.move)
+            if board.is_capture(action.move): result = chess_move +',yes'+',no'
+            elif board.is_castling(action.move): result = chess_move +',no'+',yes'
+            elif len(chess_move) == 5: result = chess_move[:-1] +',no'+',no' + ',' + chess_move[-1]
+            else: result = chess_move +',no'+',no'
+            rospy.loginfo(msg.chess_board_state)
+            rospy.loginfo(result)
+            return ChessAIResponse(result)
+        else: return ChessAIResponse("Game is over")
+    except:
+        return ChessAIResponse("Game is over")
 
 if __name__ =="__main__":
     try:

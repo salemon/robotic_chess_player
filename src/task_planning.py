@@ -91,8 +91,10 @@ class TaskPlanning():
         revise finished published the new message if the message'''
         fen = self.__board2fen(self.board)
         move = self.ai_service(fen).command
-        new_board = self.robot_service('move:'+ self.board_msg + ';' + move).feedback
-        self.info_pub.publish('mov;'+ new_board)
+        if move != 'Game is over':
+            new_board = self.robot_service('move:'+ self.board_msg + ';' + move).feedback
+            self.info_pub.publish('mov;'+ new_board)
+        else:self.info_pub.publish('mov;'+ move)
          
     def __msgToBoard(self,state_msg):
         return np.array([list(i) for i in state_msg.split(',')])
@@ -119,16 +121,6 @@ class TaskPlanning():
             s.write(' b KQkq - 0 1')
             return s.getvalue()
 
-    def __systemRevise(self,chessboard):
-        try:
-            for row in range(8):
-                for col in range(8):
-                    if not chessboard[row,col].isupper() and self.board[row,col].islower() and chessboard[row,col] != self.board[row,col]: 
-                        chessboard[row,col] = self.board[row,col]
-                else:continue 
-        except TypeError:
-            pass
-        return chessboard
     
 if __name__ == "__main__":
     try:
