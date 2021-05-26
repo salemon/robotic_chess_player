@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 from io import BytesIO as StringIO
 import os
-import cv2
 from actionlib.action_client import GoalManager
 import rospy
 from robotic_chess_player.srv import RobotService,RobotServiceResponse
@@ -37,12 +36,15 @@ class RobotServer:
             return RobotServiceResponse('Robot arrive taking image position')
 
         elif msg.request[:4] == 'move':
-            detail = msg.request.split(':')
-            self.carryOutOrder(detail[1])
-            return RobotServiceResponse('Done')
+            detail = msg.request.split(':')[1]
+            board_msg, move = detail.split(';')
+            self.board = np.array([list(i) for i in board_msg.split(',')])
+            self.carryOutOrder(move)
+            new_board = self.__boardToMsg()
+            return RobotServiceResponse(new_board)
         
         elif msg.request[:4] == 'auto':
-            detail = msg.request.split(':')
+            detail = msg.request.split(';')[1]
             self.collectData(detail[1])
             return RobotServiceResponse('Done')
         
@@ -139,17 +141,6 @@ class RobotServer:
                 continue
                 
         return chessboard
-    
-    def __systemRevise(self,chessboard):
-        try:
-            for row in range(8):
-                for col in range(8):
-                    if not chessboard[row,col].isupper() and self.board[row,col].islower() and chessboard[row,col] != self.board[row,col]: 
-                        chessboard[row,col] = self.board[row,col]
-                else:continue 
-        except TypeError:
-            pass
-        return chessboard
 
     def squareToIndex(self,square):
         alf_dict = {'h':0,'g':1,'f':2,'e':3,'d':4,'c':5,'b':6,'a':7}
@@ -187,8 +178,16 @@ class RobotServer:
                 self.pickAndPlace(piece,start,end,raiseup_height)
             self.manipulator.moveRobotJoint([[90,-135,90,-70,-90,0.0]])
         self.__updateState(piece,start,end)
-        return 'Finished'
     
+    def __boardToMsg(self):
+        board_msg = str()
+        for row in self.board:
+            row_msg = str()
+            for i in row:
+                row_msg += i
+            board_msg += row_msg + ','
+        return board_msg[:-1]
+
     def __updateState(self,piece,start,end):
         col = {'a':7,'b':6,'c':5,'d':4,'e':3,'f':2,'g':1,'h':0}
         self.board[int(end[1])-1,col[end[0]]] = piece

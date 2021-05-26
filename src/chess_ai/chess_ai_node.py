@@ -32,10 +32,10 @@ def service_handle(msg):
 
 if __name__ =="__main__":
     try:
-        rospy.init_node('Chess_AI')
+        rospy.init_node('Chess_AI_Node')
         engine = open_chess_engine()
         rospy.loginfo("starting service.....")
-        s = rospy.Service('chess_ChessAI', ChessAI, service_handle)
+        s = rospy.Service('chess_ai_service', ChessAI, service_handle)
         rospy.loginfo("chess ai service started")
         rospy.spin()
     except rospy.ROSInterruptException:

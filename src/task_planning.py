@@ -3,14 +3,15 @@ import rospy
 from robotic_chess_player.srv import *
 from std_msgs.msg import String
 import numpy as np
+from io import BytesIO as StringIO
+
 class TaskPlanning():
 
     def __init__(self):
         #init ros node
         rospy.init_node("task_planning_node")
-        
         #connect to chess ai service
-        #self.chess_ai_service = self.initService('chess_ai_service',ChessAI)
+        self.ai_service = self.initService('chess_ai_service',ChessAI)
         #connect to robot service
         self.robot_service = self.initService('robot_service',RobotService)
         #connect to neural network service
@@ -26,6 +27,8 @@ class TaskPlanning():
         # publishe task planning message to gui
         self.info_pub = rospy.Publisher('/info_msg', String, queue_size=5)
 
+        self.board = None
+
     def initService(self,service_name,service_message):
         rospy.wait_for_service(service_name)
         service = rospy.ServiceProxy(service_name, service_message)
@@ -33,13 +36,13 @@ class TaskPlanning():
         return service
 
     def gui_callback(self, command):
-        rospy.loginfo("received gui command: {}".format(command.data))
         if command.data == "locate chessboard":
             self.locate_flag = True 
         if command.data == "detect chessboard":
             self.detect_flag = True
-        if command.data[:5] == "confirm":
-            self.last_state = command.data.split(';')
+        if command.data[:7] == "confirm":
+            self.board_msg = command.data.split(';')[1]
+            self.board = self.__msgToBoard(self.board_msg)
             self.robot_flag = True
       
     def run(self):
@@ -51,15 +54,14 @@ class TaskPlanning():
                 self.locate_flag = False
             if self.detect_flag:
                 rospy.loginfo("detecting chessboard state")
-                #state_msg = self.detecting_chessboard()
-                #self.board_state_pub.publish(state_msg)
-                #self.robot_service('to standby')
+                state_msg = self.detecting_chessboard()
+                self.info_pub.publish('det;'+state_msg)
+                self.robot_service('to standby')
                 self.detect_flag = False
             if self.robot_flag:
-                #self.robot_move()
+                self.robot_move()
                 self.robot_flag = False
             rospy.sleep(0.1)
-
 
     def locating_chessboard(self):
         info = self.robot_service('locate chessboard').feedback
@@ -68,11 +70,12 @@ class TaskPlanning():
             try:
                 resp = self.nn_service(str_square_dict)
                 rospy.loginfo(resp.feedback)
-                self.info_pub.publish('Location Accomplished')
+                msg = 'Location Accomplished'
             except rospy.ServiceException as e:
-                self.info_pub.publish('Location Accomplished But Neural Network Node did not receive square dictionary')
+                msg = 'Location Accomplished But Neural Network Node did not receive square dictionary'
         else:
-            self.info_pub.publish('Location Failed, Please remove possible noise and locate again')
+            msg = 'Location Failed, Please remove possible noise and locate again'
+        self.info_pub.publish('loc;'+msg)
 
     def detecting_chessboard(self):
         self.robot_service('to take image')
@@ -86,11 +89,35 @@ class TaskPlanning():
         #get the next move and send to robot service
         '''this function needs to communicate with the gui
         revise finished published the new message if the message'''
-        
-        state_msg = self.detecting_chessboard()
-        syscorr_state_msg = self.__systemRevise(state_msg)
+        fen = self.__board2fen(self.board)
+        move = self.ai_service(fen).command
+        new_board = self.robot_service('move:'+ self.board_msg + ';' + move).feedback
+        self.info_pub.publish('mov;'+ new_board)
+         
+    def __msgToBoard(self,state_msg):
+        return np.array([list(i) for i in state_msg.split(',')])
 
-
+    def __board2fen(self,board):
+        board = np.rot90(board,2)
+        with StringIO() as s:
+            for row in board:
+                empty = 0
+                for cell in row:
+                    if cell != '_':
+                        if empty > 0:
+                            s.write(str(empty))
+                            empty = 0
+                        s.write(cell)
+                    else:
+                        empty += 1
+                if empty > 0:
+                    s.write(str(empty))
+                s.write('/')
+            # Move one position back to overwrite last '/'
+            s.seek(s.tell() - 1)
+            # If you do not have the additional information choose what to put
+            s.write(' b KQkq - 0 1')
+            return s.getvalue()
 
     def __systemRevise(self,chessboard):
         try:
@@ -102,6 +129,7 @@ class TaskPlanning():
         except TypeError:
             pass
         return chessboard
+    
 if __name__ == "__main__":
     try:
         obj = TaskPlanning()
