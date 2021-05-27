@@ -58,8 +58,8 @@ class RobotManipulator(object):
             if type(pose)!= int:
                 self.goStraightToPose(pose)
             else:
-                if pose == 0: self.gripper_srv(0)
-                else: self.gripper_srv(1)
+                if pose == 0: self.gripper_srv(position=255, speed=255, force=1)
+                else: self.gripper_srv(position=100, speed=255, force=1)
 
                 
 if __name__ == "__main__":

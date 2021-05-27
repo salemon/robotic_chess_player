@@ -15,7 +15,7 @@ import actionlib
 from control_msgs.msg import *
 from trajectory_msgs.msg import *
 from transformation import Trans3D 
-gripper_path = r.get_path('robotic_chess_player') + '/include/robotiq_hande_ros_driver'
+gripper_path = r.get_path('robotiq_hande_ros_driver')
 sys.path.append(gripper_path)
 from robotiq_hande_ros_driver.srv import gripper_service
 
