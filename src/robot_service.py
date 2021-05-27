@@ -256,6 +256,7 @@ class RobotServer:
             point = Trans3D.from_tvec(np.array([x, y, 0]))
             square_pose = (self.base2chessboard_pose * point).to_tfmatrix()
             square_pose[2,3] = 0.1801
+            square_pose[1,3] += 0.0065
             return Trans3D.from_tfmatrix(square_pose)
 
     def __aboveSquarePose(self, square_pose):
@@ -266,7 +267,7 @@ class RobotServer:
         pickup_dict = {'k':0.06,'q':0.0585,'b':0.04,'n':0.032,'r':0.032,'p':0.023}
         pickup_height = pickup_dict[piece.lower()]
         pickup_pose = start_pose * Trans3D.from_tvec(np.array([0,0,-pickup_height]))
-        dropoff_pose = end_pose * Trans3D.from_tvec(np.array([0,0,-pickup_height + 0.0006]))
+        dropoff_pose = end_pose * Trans3D.from_tvec(np.array([0,0,-pickup_height + 0.0003]))
         return pickup_pose, dropoff_pose, pickup_height
 
     def __raiseUpHeight(self,start,end,action):
@@ -286,7 +287,7 @@ class RobotServer:
                 chessboard[start[0]][start[1]] = '_'
                 passing_area = chessboard[min(row):max(row)+1,min(col):max(col)+1]
                 return piece, max([piece_height[i.lower()] for i in passing_area.reshape((passing_area.size,))])
-            else: return piece, 0.01
+            else: return piece, 0.02
     
     def __raiseUpPose(self,raiseup_height,start_pose,end_pose):
         ra_s_pose = start_pose * Trans3D.from_tvec(np.array([0,0,-raiseup_height]))

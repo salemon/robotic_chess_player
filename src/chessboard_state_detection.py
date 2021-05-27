@@ -7,7 +7,7 @@ import numpy as np
 import torch
 from torchvision import transforms
 import rospkg
-
+from cv_bridge import CvBridge,CvBridgeError
 class NNVision:
     #ros service, request: string, response: string
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -15,7 +15,7 @@ class NNVision:
         transforms.ToPILImage(),
         transforms.Resize((224,224)),
         transforms.ToTensor(),
-        transforms.Normalize([0.4129, 0.3452, 0.2850], [0.2895, 0.2620, 0.2181])])
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
 
     def __init__(self):
         self.server = rospy.Service('board_state',RobotService,self.serviceHandler)
@@ -63,8 +63,9 @@ class NNVision:
 
     def detectingState(self):
         image = self.__undistortImage()
+        image = cv2.cvtColor(image,cv2.COLOR_RGB2BGR)
         col = {'a':7,'b':6,'c':5,'d':4,'e':3,'f':2,'g':1,'h':0}
-        class_names = ['B', 'K', 'N', 'P', 'Q', 'R', '_', 'b', 'k', 'n', 'p', 'q', 'r']
+        class_names = ['_', 'b', 'k', 'n', 'p', 'q', 'r', 'B', 'K', 'N', 'P', 'Q', 'R']
         chessboard = np.zeros((8,8),dtype=str)
         img_list,key_list,count = [],[],0
         for key,value in self.square.items():

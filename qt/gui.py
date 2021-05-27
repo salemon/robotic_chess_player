@@ -12,6 +12,7 @@ class Ui_MainWindow(object):
         self.command_pub = rospy.Publisher("/button", String, queue_size=2)
         self.text_pub = rospy.Publisher("/correction_msg", String, queue_size=2)
         self.board = None
+        
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(749, 536)

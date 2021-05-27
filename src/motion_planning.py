@@ -233,8 +233,8 @@ class MotionPlanner:
             if type(i) != int:
                 self.moveRobot(i)
             else:
-                if i == 0:self.gripper_srv(0)
-                else: self.gripper_srv(1)
+                if i == 0:self.gripper_srv(position=255, speed=255, force=1)
+                else: self.gripper_srv(position=100, speed=255, force=1)
 
     def moveRobotJoint(self, joint_pos_list, speed_scale=1, unit='degree'):
         msg = self.create_trajectories(joint_pos_list, speed_scale, unit)
