@@ -9,6 +9,7 @@ from numpy.linalg import norm
 from motion_planning import *
 from vision_detector import *
 from transformation import Trans3D
+from avt_camera import *
 
 class RobotServer:
     
@@ -19,6 +20,7 @@ class RobotServer:
         self.detector = VisionDetector()
         self.board = None
         self.standby = [90,-135,90,-70,-90,0.0]
+        self.camera = AvtCamera()
 
     def serviceHandler(self,msg):
         rospy.loginfo("Request: {}".format(msg.request))
@@ -45,7 +47,7 @@ class RobotServer:
         
         elif msg.request[:4] == 'auto':
             detail = msg.request.split(';')[1]
-            self.collectData(detail[1])
+            self.collectData(detail)
             return RobotServiceResponse('Done')
         
         elif msg.request[:2] == 'to':
@@ -64,7 +66,6 @@ class RobotServer:
 
     def locateChessboard(self):
         try:
-            goal = self.standby[:]
             self.manipulator.moveRobotJoint([[90,-135,90,-70,-90,0.0]])
             rospy.sleep(1)
             base2TCP_pose = self.manipulator.currentRobotPose()
@@ -73,9 +74,9 @@ class RobotServer:
             self.base2TCP_pose = self.manipulator.currentRobotPose()
             rospy.sleep(1)
             str_square_dict, self.base2chessboard_pose = self.detector.poseAndSquare(self.base2TCP_pose)
-            self.spot = self.__dropPieceSpot()
             goal = self.__gameStandby()
             self.manipulator.moveRobotJoint([goal])
+            self.capture_piece = 0
             return "Done;"+str_square_dict
         except:
             return "Fail"
@@ -113,9 +114,11 @@ class RobotServer:
             s.write(' b KQkq - 0 1')
             return s.getvalue()
 
-    def __dropPieceSpot(self):
+    def __dropPieceSpot(self,number, x_num = 11,y_num = 6):
         unit_length = 0.045/2
-        x, y = (2*11-1) * unit_length, (2*8-1) * unit_length
+        y_num += number % 3
+        x_num += number / 3
+        x, y = (2*x_num-1) * unit_length, (2*y_num-1) * unit_length
         point = Trans3D.from_tvec(np.array([x, y, 0]))
         return self.base2chessboard_pose * point
 
@@ -158,6 +161,8 @@ class RobotServer:
             step,capturing,castling = detail
             start,end = step[:2],step[2:]
             if capturing == 'yes':
+                if len(end) == 3:
+                    end = end[:2]
                 piece, raiseup_height = self.__raiseUpHeight(end,'spot','capturing')
                 self.pickAndPlace(piece,end,'spot',raiseup_height)
                 piece,raiseup_height = self.__raiseUpHeight(start,end,'move')
@@ -198,39 +203,45 @@ class RobotServer:
         alf_list = ['h','g','f','e','d','c','b','a']
         path = os.path.join(parent_dir, piece)
         os.mkdir(path)
+        count = 0
         if piece.lower() != 'k':
             for word in alf_list:
                 for num in range(1,9,2):
                     if word == 'h' and num == 1:
-                        self.__takingImage()
+                        self.manipulator.moveRobot([self.base2TCP_pose])
+                        self.camera.trigger_image()
                         sq1, sq2 = word + str(num), word + str(num+1)
-                        self.detector.crop_image(self.camera.lastest_img,[sq1,sq2],path)
+                        count = self.detector.crop_image(self.camera.lastest_img,[sq1,sq2],path,count)
                     elif num == 1:
                         sq1, pre_sq1 = word+str(num), sq1
-                        self.pickAndPlace(piece,pre_sq1,sq1)
+                        self.pickAndPlace(piece,pre_sq1,sq1,0.02)
                         sq2, pre_sq2 = word+str(num+1), sq2
-                        self.pickAndPlace(piece,pre_sq2,sq2)
-                        self.__takingImage()
-                        self.detector.crop_image(self.camera.lastest_img,[sq1,sq2],path)
+                        self.pickAndPlace(piece,pre_sq2,sq2,0.02)
+                        self.manipulator.moveRobot([self.base2TCP_pose])
+                        self.camera.trigger_image()
+                        count = self.detector.crop_image(self.camera.lastest_img,[sq1,sq2],path,count)
                     else:
                         sq2, pre_sq2 = word+str(num+1), sq2
-                        self.pickAndPlace(piece,pre_sq2,sq2)
+                        self.pickAndPlace(piece,pre_sq2,sq2,0.02)
                         sq1, pre_sq1 = word+str(num), sq1
-                        self.pickAndPlace(piece,pre_sq1,sq1)
-                        self.__takingImage()
-                        self.detector.crop_image(self.camera.lastest_img,[sq1,sq2],path)
+                        self.pickAndPlace(piece,pre_sq1,sq1,0.02)
+                        self.manipulator.moveRobot([self.base2TCP_pose])
+                        self.camera.trigger_image()
+                        count = self.detector.crop_image(self.camera.lastest_img,[sq1,sq2],path,count)
         else:
-            self.__takingImage()
+            self.manipulator.moveRobot([self.base2TCP_pose])
+            self.camera.trigger_image()
             sq1 = 'h1'
-            self.detector.crop_image(self.camera.lastest_img,[sq1],path)
+            count = self.detector.crop_image(self.camera.lastest_img,[sq1],path,count)
             for word in alf_list:
                 for num in range(1,9):
                     if word == 'h' and num == 1:continue
                     else:
                         sq1, pre_sq1 = word+str(num), sq1
-                        self.pickAndPlace(piece,pre_sq1,sq1)
-                        self.__takingImage()
-                        self.detector.crop_image(self.camera.lastest_img,[sq1],path)
+                        self.pickAndPlace(piece,pre_sq1,sq1,0.02)
+                        self.manipulator.moveRobot([self.base2TCP_pose])
+                        self.camera.trigger_image()
+                        count = self.detector.crop_image(self.camera.lastest_img,[sq1],path,count)
         return 'Finished'
 
     def toSquare(self,square):
@@ -248,7 +259,9 @@ class RobotServer:
     def __squarePose(self,square):
         "x : alf , y : num"
         if square == 'spot':
-            return self.spot
+            spot = self.__dropPieceSpot(self.capture_piece)
+            self.capture_piece += 1
+            return spot
         else:
             unit_length = 0.045/2
             alf_dict = {'h':1,'g':2,'f':3,'e':4,'d':5,'c':6,'b':7,'a':8}
@@ -315,7 +328,7 @@ class RobotServer:
         raiseup_height = pickup_height + raiseup_height
         ra_s_pose,ra_e_pose = self.__raiseUpPose(raiseup_height,s_pose,e_pose)
         middle_action = self.__strightPath(ra_s_pose,ra_e_pose) + [dropoff_pose]
-        waypoints = [[ab_s_pose, pickup_pose], 0,middle_action, 1, [ab_e_pose]]
+        waypoints = [[ab_s_pose, pickup_pose], 0,middle_action, 1, [ab_e_pose],2]
         self.manipulator.moveRobotWaypoints(waypoints)
         return None
 

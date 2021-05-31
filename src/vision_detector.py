@@ -30,6 +30,7 @@ class VisionDetector:
     def poseAndSquare(self,base2TCP_pose):
         self.camera.trigger_image()
         square_dict,camera2chessbaord_pose = self.pose_estimator.estimateSquare(self.camera.lastest_img)
+        self.square_dict = square_dict
         return str(square_dict), base2TCP_pose * self.TCP2camera_pose * camera2chessbaord_pose
         
     def chessboardState(self):
@@ -40,13 +41,15 @@ class VisionDetector:
         except rospy.ServiceException as e:
             print("Service call failed: %s"%e)
     
-    def crop_image(self,image, square, path):
+    def crop_image(self,image, square, path,count):
         image = self.__undistortImage(image)
         for sq in square:
             p = self.square_dict[sq]
             square_img = image[p[0]:p[1],p[2]:p[3]]
-            name = os.path.join(path, '{}.jpg'.format(sq))
+            name = os.path.join(path, '{}.jpg'.format(count))
             cv2.imwrite(name,square_img)
+            count += 1
+        return count
 
     def __undistortImage(self,image):
         h,  w = image.shape[:2]

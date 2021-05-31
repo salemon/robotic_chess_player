@@ -8,6 +8,7 @@ import torch
 from torchvision import transforms
 import rospkg
 from cv_bridge import CvBridge,CvBridgeError
+
 class NNVision:
     #ros service, request: string, response: string
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
