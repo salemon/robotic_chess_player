@@ -29,9 +29,9 @@ class VisionDetector:
       
     def poseAndSquare(self,base2TCP_pose):
         self.camera.trigger_image()
-        square_dict,camera2chessbaord_pose = self.pose_estimator.estimateSquare(self.camera.lastest_img)
+        square_dict,camera2chessbaord_pose,square_draw = self.pose_estimator.estimateSquare(self.camera.lastest_img)
         self.square_dict = square_dict
-        return str(square_dict), base2TCP_pose * self.TCP2camera_pose * camera2chessbaord_pose
+        return str(square_dict), base2TCP_pose * self.TCP2camera_pose * camera2chessbaord_pose, str(square_draw)
         
     def chessboardState(self):
         try:

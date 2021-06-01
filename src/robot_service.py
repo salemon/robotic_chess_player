@@ -65,21 +65,21 @@ class RobotServer:
             return RobotServiceResponse('Done')
 
     def locateChessboard(self):
-        try:
-            self.manipulator.moveRobotJoint([[90,-135,90,-70,-90,0.0]])
-            rospy.sleep(1)
-            base2TCP_pose = self.manipulator.currentRobotPose()
-            base2chessboard_pose = self.detector.takeImagePose(base2TCP_pose)
-            self.manipulator.moveRobot(base2chessboard_pose)
-            self.base2TCP_pose = self.manipulator.currentRobotPose()
-            rospy.sleep(1)
-            str_square_dict, self.base2chessboard_pose = self.detector.poseAndSquare(self.base2TCP_pose)
-            goal = self.__gameStandby()
-            self.manipulator.moveRobotJoint([goal])
-            self.capture_piece = 0
-            return "Done;"+str_square_dict
-        except:
-            return "Fail"
+        #try:
+        self.manipulator.moveRobotJoint([[90,-135,90,-70,-90,0.0]])
+        rospy.sleep(1)
+        base2TCP_pose = self.manipulator.currentRobotPose()
+        base2chessboard_pose = self.detector.takeImagePose(base2TCP_pose)
+        self.manipulator.moveRobot(base2chessboard_pose)
+        self.base2TCP_pose = self.manipulator.currentRobotPose()
+        rospy.sleep(1)
+        str_square_dict, self.base2chessboard_pose,str_square_text = self.detector.poseAndSquare(self.base2TCP_pose)
+        goal = self.__gameStandby()
+        self.manipulator.moveRobotJoint([goal])
+        self.capture_piece = 0
+        return "Done;"+str_square_dict
+        #except:
+        #    return "Fail"
 
     def chessboardState(self):
         self.manipulator.moveRobot([self.base2TCP_pose])
@@ -203,12 +203,13 @@ class RobotServer:
         alf_list = ['h','g','f','e','d','c','b','a']
         path = os.path.join(parent_dir, piece)
         os.mkdir(path)
-        count = 0
+        count = 200
         if piece.lower() != 'k':
             for word in alf_list:
                 for num in range(1,9,2):
                     if word == 'h' and num == 1:
                         self.manipulator.moveRobot([self.base2TCP_pose])
+                        rospy.sleep(0.5)
                         self.camera.trigger_image()
                         sq1, sq2 = word + str(num), word + str(num+1)
                         count = self.detector.crop_image(self.camera.lastest_img,[sq1,sq2],path,count)
@@ -218,6 +219,7 @@ class RobotServer:
                         sq2, pre_sq2 = word+str(num+1), sq2
                         self.pickAndPlace(piece,pre_sq2,sq2,0.02)
                         self.manipulator.moveRobot([self.base2TCP_pose])
+                        rospy.sleep(0.5)
                         self.camera.trigger_image()
                         count = self.detector.crop_image(self.camera.lastest_img,[sq1,sq2],path,count)
                     else:
@@ -226,10 +228,12 @@ class RobotServer:
                         sq1, pre_sq1 = word+str(num), sq1
                         self.pickAndPlace(piece,pre_sq1,sq1,0.02)
                         self.manipulator.moveRobot([self.base2TCP_pose])
+                        rospy.sleep(0.5)
                         self.camera.trigger_image()
                         count = self.detector.crop_image(self.camera.lastest_img,[sq1,sq2],path,count)
         else:
             self.manipulator.moveRobot([self.base2TCP_pose])
+            rospy.sleep(0.5)
             self.camera.trigger_image()
             sq1 = 'h1'
             count = self.detector.crop_image(self.camera.lastest_img,[sq1],path,count)
@@ -240,6 +244,7 @@ class RobotServer:
                         sq1, pre_sq1 = word+str(num), sq1
                         self.pickAndPlace(piece,pre_sq1,sq1,0.02)
                         self.manipulator.moveRobot([self.base2TCP_pose])
+                        rospy.sleep(0.5)
                         self.camera.trigger_image()
                         count = self.detector.crop_image(self.camera.lastest_img,[sq1],path,count)
         return 'Finished'
@@ -277,7 +282,7 @@ class RobotServer:
         return square_pose * point
 
     def __pickDropPose(self,piece,start_pose,end_pose):
-        pickup_dict = {'k':0.06,'q':0.0585,'b':0.04,'n':0.032,'r':0.032,'p':0.023}
+        pickup_dict = {'k':0.06,'q':0.0585,'b':0.04,'n':0.0375,'r':0.032,'p':0.023}
         pickup_height = pickup_dict[piece.lower()]
         pickup_pose = start_pose * Trans3D.from_tvec(np.array([0,0,-pickup_height]))
         dropoff_pose = end_pose * Trans3D.from_tvec(np.array([0,0,-pickup_height + 0.0003]))

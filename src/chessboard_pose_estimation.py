@@ -4,6 +4,7 @@ import numpy as np
 from numpy import linalg as LA
 from scipy.spatial import ConvexHull
 from scipy.spatial.distance import cdist
+from task_planning import TaskPlanning
 from transformation import Trans3D
 
 class ChessboardPoseEstimation():
@@ -164,7 +165,15 @@ class ChessboardPoseEstimation():
         inner_points = self.chessboard_inner_points()
         corner,image_points = self.img_points(inner_points)
         object_points = self.object_coordinate(corner)
-
+        img = image.copy()
+        '''
+        for p in image_points:
+            x,y = p
+            cv2.circle(img,(int(x),int(y)),3,(255,0,0),-1)
+        cv2.imshow('img',img)
+        cv2.waitKey(0) & 0xFF
+        cv2.destroyAllWindows()
+        '''
         camera_matrix,dist_coeff = self.camera_matrix,self.dist_coeff
         _, rotation_vector, translation_vector = cv2.solvePnP(
                 object_points, image_points, camera_matrix, dist_coeff)
@@ -175,16 +184,14 @@ class ChessboardPoseEstimation():
             img = cv2.line(img, corner, tuple(imgpts[2].ravel()), (0,255,0), 5)
             img = cv2.line(img, corner, tuple(imgpts[3].ravel()), (0,0,255), 5)
             return img
-        axis = np.float32([[0,0,0],[0.045,0,0], [0,0.045,0], [0.045*7.5,0.045*0.5,0]]).reshape(-1,3)
+        axis = np.float32([[0,0,0],[0.045,0,0], [0,0.045,0], [0.0,0.0,-0.045]]).reshape(-1,3)
         imgpts, jac = cv2.projectPoints(axis, rotation_vector, translation_vector, self.camera_matrix, self.dist_coeff)
-        img = image.copy()
         img = draw(img,imgpts)
-        for p in image_points:
-            x,y = p
-            cv2.circle(img,(int(x),int(y)),3,(255,0,0),-1)
+        
         cv2.imshow('img',img)
         cv2.waitKey(0) & 0xFF
         cv2.destroyAllWindows()
+        cv2.imwrite('2.jpg',img)
         '''
         return rotation_vector,translation_vector
 
@@ -207,18 +214,27 @@ class ChessboardPoseEstimation():
         alf_constant,num_constant = constant(alf+1),constant(num)
         square = [square_ul[1]+int(num_constant*(num/7-8/7)),square_lr[1]+int(num_constant*(num/7-1/7)),
                 square_ul[0]+int(alf_constant*((alf+1)/7-8/7)),square_lr[0]+int(alf_constant*((alf+1)/7-1/7))]
-        return square
+        square_draw = [square_ul[1],square_lr[1],square_ul[0],square_lr[0]]
+        return square, square_draw
 
     def estimateSquare(self,image):
         rot_vect,trans_vect = self.estimate(image)
         alf_dict = {'h':0,'g':1,'f':2,'e':3,'d':4,'c':5,'b':6,'a':7}
-        square_dict, unit_length = {}, 0.045
+        square_dict, square_draw = {}, {}
         for world,alf in alf_dict.items():
             for num in range(1,9):
                 key = world + str(num)
-                square = self.squarePixel(alf,num,rot_vect,trans_vect,self.camera_matrix)
+                square, square_d = self.squarePixel(alf,num,rot_vect,trans_vect,self.camera_matrix)
                 square_dict[key] = square
+                square_draw[key] =  square_d
         camera2chessboard_pose = Trans3D.from_angaxis(rot_vect, tvec=trans_vect)
         camera2chessboard_pose = camera2chessboard_pose * Trans3D.from_tvec(np.array([0,0,-0.1338]))
-        return square_dict,camera2chessboard_pose
+        return square_dict,camera2chessboard_pose, square_draw
 
+if __name__ == "__main__":
+    K = np.array([1353.131570942828, 0, 758.6928458558336, 0, 1353.743967167117, 557.9749908957598, 0, 0, 1]).reshape((3,3))
+    D = np.array([-0.0588151813531173, 0.05245363676337366, 0.000101400909359754, -0.001346375977094263, 0.02585377839443043])
+    robot = ChessboardPoseEstimation(K,D)
+    image = cv2.imread('frame0000.jpg')
+    _,_,sq_dict = robot.estimateSquare(image)
+    print(sq_dict)
