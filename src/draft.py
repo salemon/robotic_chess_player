@@ -1,138 +1,105 @@
-import numpy as np 
-
-state_msg =  "________,________,________,________,________,________,________,________"
-board = np.array([list(i) for i in state_msg.split(',')])
-
-def humanRevise(chessboard):
-    col = {'a':7,'b':6,'c':5,'d':4,'e':3,'f':2,'g':1,'h':0}
-    print(chessboard)
-    while True:
-        ready = raw_input('Are there any piece needs to revise? ')
-        try:
-            if ready != '':
-                square,piece = ready.split(' ')
-                chessboard[int(square[1])-1,col[square[0]]] = piece
-                print(chessboard)
-            else:
-                corr_state = ''
-                for row in chessboard.tolist():
-                    corr_state += ''.join(row) + ','
-                break
-        except:
-            continue
-            
-    return corr_state[:-1]
-
-humanRevise(board)
-
 #!/usr/bin/env python
 import rospy
-from robotic_chess_player.srv import *
-from std_msgs.msg import String
+from motion_planning import MotionPlanner
+from sensor_msgs.msg import Image
+import cv2
+from cv_bridge import CvBridge,CvBridgeError
+from transformation import Trans3D
 import numpy as np
-class TaskPlanning():
+from std_msgs.msg import String
 
+rospy.init_node('test_node')
+
+class Test:
     def __init__(self):
-        #init ros node
-        rospy.init_node("task_planning_node")
-        '''
-        #connect to chess ai service
-        #self.chess_ai_service = self.initService('chess_ai_service',ChessAI)
-        #connect to robot service
-        self.robot_service = self.initService('robot_service',RobotService)
-        #connect to neural network service
-        self.nn_service = self.initService('board_state', RobotService)
-        #subscribe message from gui
-        '''
-        self.gui_sub = rospy.Subscriber('/button', String, queue_size=5, callback=self.gui_callback)
-        #set up the flag for actions
-        self.locate_flag = False 
-        self.detect_flag = False
-        self.robot_flag = False
-        self.correct_flag = False
-        # publishe task planning message to gui
-        self.info_pub = rospy.Publisher('info', String, queue_size=5)
-        self.board_state_pub = rospy.Publisher('chessboard_state', String, queue_size=5)
-        self.revise_pub = rospy.Publisher('revise_board', String, queue_size=5)
-    def initService(self,service_name,service_message):
-        rospy.wait_for_service(service_name)
-        service = rospy.ServiceProxy(service_name, service_message)
-        rospy.loginfo('Successfully connected to {}'.format(service_name))
-        return service
+        self.mp = MotionPlanner()
 
-    def gui_callback(self, command):
-        rospy.loginfo("received gui command {}".format(command.data))
-        if command.data == "locate":
-            self.locate_flag = True 
-        if command.data == "detect":
-            self.detect_flag = True
-        if command.data[:5] == "robot":
-            self.last_state = command.data.split(';')
-            self.robot_flag = True
-      
+        K = rospy.get_param('/camera_calibration/K')
+        self.camera_matrix = np.array(K).reshape((3,3))
+        D = rospy.get_param('/camera_calibration/D')
+        self.dist_coeff = np.array(D)
+
+        # read hand eye position from parameter server
+        self.TCP2camera_pose = Trans3D.from_ROSParameterServer("/hand_eye_position")
+
+        self.trigger = rospy.Publisher('/trigger', String, queue_size=10)
+        self.img_sub = rospy.Subscriber('/avt_camera_img', Image, self.image_callback)
+        self.lastest_img = None
+        self.img_received = False 
+        self.bridge = CvBridge()
+        rospy.sleep(1)
+    
     def run(self):
-        rospy.loginfo("task planning is running now")
-        while not rospy.is_shutdown():
-            if self.locate_flag:
-                rospy.loginfo("locating chessboard position")
-                self.locating_chessboard()
-                self.locate_flag = False
-            if self.detect_flag:
-                rospy.loginfo("detecting chessboard state")
-                state_msg = self.detecting_chessboard()
-                self.board_state_pub.publish(state_msg)
-                self.robot_service('to standby')
-                self.detect_flag = False
-            if self.robot_flag:
-                self.robot_move()
-                self.robot_flag = False
-            rospy.sleep(0.1)
+        # move to initial position
 
+        # take an image
+        self.trigger_image()
+        cv2.imshow('test', self.lastest_img)
+        cv2.waitKey(-1)
+        cv2.destroyAllWindows()
 
-    def locating_chessboard(self):
-        info = self.robot_service('locate chessboard').feedback
-        if info[:4] ==  'Done':
-            str_square_dict = info.split(';')[1]
-            try:
-                resp = self.nn_service(str_square_dict)
-                rospy.loginfo(resp.feedback)
-                self.info_pub.publish('Location Accomplished')
-            except rospy.ServiceException as e:
-                self.info_pub.publish('Location Accomplished But Neural Network Node did not receive square dictionary')
-        else:
-            self.info_pub.publish('Location Failed, Please remove possible noise and locate again')
+        # detect chessboard pose
+        camera2chessboard_pose = self.estimatePoseTest(self.lastest_img)
 
-    def detecting_chessboard(self):
-        self.robot_service('to take image')
-        return self.nn_service('state').feedback
+        base2TCP_pose = self.mp.currentRobotPose()
 
-    def robot_move(self):
-        #received previous correct chessboard state string
-        #get the detection and revise 
-        #send back to GUI to verify and get the confirmed state
-        #transfrom to fen and sent to ai
-        #get the next move and send to robot service
-        '''this function needs to communicate with the gui
-        revise finished published the new message if the message'''
-        
-        state_msg = self.detecting_chessboard()
-        syscorr_state_msg = self.__systemRevise(state_msg)
+        base2chessboard_pose = base2TCP_pose * self.TCP2camera_pose * camera2chessboard_pose
 
+        goal_1 = base2chessboard_pose * Trans3D.from_tvec(np.array([0, 0, -0.1344-0.05]))
+        goal_2 = base2chessboard_pose * Trans3D.from_tvec(np.array([0., 0.2, -0.1344-0.05]))
+        self.mp.moveRobot([goal_1,goal_2], 0.2)
 
-
-    def __systemRevise(self,chessboard):
+    def image_callback(self, msg):
+        rospy.loginfo("image received")
         try:
-            for row in range(8):
-                for col in range(8):
-                    if not chessboard[row,col].isupper() and self.board[row,col].islower() and chessboard[row,col] != self.board[row,col]: 
-                        chessboard[row,col] = self.board[row,col]
-                else:continue 
-        except TypeError:
-            pass
-        return chessboard
-if __name__ == "__main__":
-    try:
-        obj = TaskPlanning()
-        obj.run()
-    except rospy.ROSInterruptException:
-        pass
+            img = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+        except CvBridgeError as e:
+            print(e)
+        self.lastest_img = img.copy()
+        self.img_received = True 
+
+    def trigger_image(self):
+        self.trigger.publish(String('Hi!'))
+        count = 0
+        while(not self.img_received):
+            rospy.sleep(0.1)
+            count += 1
+            if count > 15: break
+            continue
+        self.img_received = False
+
+    def estimatePoseTest(self, image):
+        def draw(img, corners, imgpts):
+            corner = tuple(corners[0].ravel())
+            img = cv2.line(img, corner, tuple(imgpts[0].ravel()), (255,0,0), 5)
+            img = cv2.line(img, corner, tuple(imgpts[1].ravel()), (0,255,0), 5)
+            img = cv2.line(img, corner, tuple(imgpts[2].ravel()), (0,0,255), 5)
+            return img
+        objp = np.zeros((6*9,3), np.float32)
+        objp[:,:2] = np.mgrid[0:6,0:9].T.reshape(-1,2)
+        objp *= 0.022
+        axis = np.float32([[0.088,0,0], [0,0.088,0], [0,0,-0.088]]).reshape(-1,3)
+
+        # detect feature points.
+        ret, corners = cv2.findChessboardCorners(image, (6,9))
+        # refine pixel location
+        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+        if ret:
+            image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            corners2 = cv2.cornerSubPix(image_gray, corners, (11,11), (-1,-1), criteria)
+            ret, rvecs, tvecs = cv2.solvePnP(objp, corners2, self.camera_matrix, self.dist_coeff)
+        # project 3D points to image plane
+        imgpts, jac = cv2.projectPoints(axis, rvecs, tvecs, self.camera_matrix, self.dist_coeff)
+        img = draw(image, corners2, imgpts)
+        cv2.imshow('test',img)
+        cv2.waitKey(-1)
+        cv2.destroyAllWindows()
+
+        camera2chessboard_pose =  Trans3D.from_angaxis(rvecs, tvec=tvecs)
+        print("detected chessboard to camera pose: " + camera2chessboard_pose.to_string())
+        return camera2chessboard_pose 
+
+test_obj = Test()
+
+test_obj.run()
+
