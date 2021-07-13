@@ -70,6 +70,7 @@ class MotionPlanner:
         self.ee_rot_speed = np.pi
         #gripper service 
         self.gripper_srv = rospy.ServiceProxy('gripper_service', gripper_service)
+
     def joint_state_callback(self, msg):
         joint_idx = []
         for idx, name in enumerate(msg.name):
@@ -90,7 +91,6 @@ class MotionPlanner:
     def pose_diff(self, waypoint1, waypoint2):
         '''
         compute the relative pose from waypoint1 (joint angles) to waypoint2 (joint angles).
-
         Args:
             waypoint1 (np array): first joint angles
             waypoint2 (np array): second joint angles
@@ -100,7 +100,20 @@ class MotionPlanner:
         '''
         wp1_pose = self.forward_kin(waypoint1)
         wp2_pose = self.forward_kin(waypoint2)
-        diff_tfmatrix = np.linalg.inv(wp1_pose.to_tfmatrix()).dot(wp2_pose.to_tfmatrix())
+        distant, d_angle = self.pose_diff_tcp(wp1_pose, wp2_pose)
+        return distant, d_angle
+    
+    def pose_diff_tcp(self, pose1, pose2):
+        '''
+        compute the relative pose from pose1 to pose2.
+        Args:
+            pose1 (Trans3D): first pose
+            pose2 (Trans3D): second pose 
+        Returns:
+            distant (double): distance of end-effector in meters between two waypoint
+            d_angle (double): rotation angles between two waypoints
+        '''
+        diff_tfmatrix = np.linalg.inv(pose1.to_tfmatrix()).dot(pose2.to_tfmatrix())
         d_tvec = diff_tfmatrix[0:3,3]
         distant = np.linalg.norm(d_tvec)
         d_rot = Trans3D.from_tfmatrix(diff_tfmatrix).to_angaxis()
@@ -150,7 +163,6 @@ class MotionPlanner:
     def ikSolve(self, pose, example_solution, debug=False):
         '''
         Find the ik solution that is closest to the example solution 
-
         Args:
             pose (Trans3D): end-effector pose 
             example_solution (np 1D array): example solution as a joint angle list
@@ -211,12 +223,14 @@ class MotionPlanner:
     def moveRobot(self, pose_list, speed_scale=1, start_joint_pos=None):
         if start_joint_pos is None:
             start_joint_pos = self.lastest_joint_state
+
         # ik solution for each pose 
         trajectory_list = []
         current_joint_pos = start_joint_pos
         for pose in pose_list:
             current_joint_pos = self.ikSolve(pose, current_joint_pos)
             trajectory_list.append(current_joint_pos)
+        
         # generate joint trajectory list
         msg = self.create_trajectories(trajectory_list, speed_scale, 'rad')
 
@@ -227,11 +241,95 @@ class MotionPlanner:
         except KeyboardInterrupt:
             self.robot_client.cancel_goal() 
             raise
+        
+    def moveStraightLine(self, goal_pose, speed_l = 0.4, speed_a = 1.0):
+        # translational step size
+        step_size_t = 0.005
+        # rotational step size
+        step_size_r = 0.02
+        
+        # get starting pose
+        start_joint_pos = self.lastest_joint_state
+        start_pose = self.forward_kin(start_joint_pos)
+
+        # distance from start to goal
+        distance, angle = self.pose_diff_tcp(start_pose, goal_pose)
+
+        # determine how many waypoints should be generated.
+        n = int(np.ceil(max(distance/step_size_t, angle/step_size_r)))
+
+        # determine the duration of this trajectory
+        t_traj = max(distance/speed_l, angle/speed_a)
+
+        # the step time
+        d_time = t_traj / n
+
+        # generate waypoint list.
+        pose_list = []
+        for i in range(n):
+            wp = self.__interpolate(start_pose, goal_pose, float(i+1)/float(n))
+            pose_list.append(wp)
+        
+        # generate joint position list
+        example_joint = start_joint_pos
+        jointPos_list = []
+        for pose in pose_list:
+            ik_sol = self.ikSolve(pose, example_joint)
+            if ik_sol is None:
+                print("IK solution not found, return.")
+                return
+            example_joint = ik_sol
+            jointPos_list.append(ik_sol)
+        
+        # generate joint vel list
+        jointVel_list = []
+        for i in range(n-1):
+            joint_diff = jointPos_list[i+1] - jointPos_list[i]
+            jointVel = [ang / d_time for ang in joint_diff]
+            jointVel_list.append(jointVel)
+        jointVel_list.append([0,0,0,0,0,0])
+
+        # generate joint trajectory message
+        g = FollowJointTrajectoryGoal()
+        g.trajectory = JointTrajectory()
+        g.trajectory.joint_names = ['shoulder_pan_joint', 'shoulder_lift_joint', 'elbow_joint',
+                'wrist_1_joint', 'wrist_2_joint', 'wrist_3_joint']
+        current_t = 0
+        for i in range(len(jointPos_list)):
+            current_t += d_time
+            g.trajectory.points.append(
+                JointTrajectoryPoint(positions=jointPos_list[i], 
+                                     velocities=jointVel_list[i], 
+                                     time_from_start=rospy.Duration(current_t)))
+        
+        # send trajectory message
+        self.robot_client.send_goal(g)
+        try:
+            self.robot_client.wait_for_result()
+        except KeyboardInterrupt:
+            self.robot_client.cancel_goal() 
+            raise
+
+    @staticmethod
+    def __interpolate(p1, p2, t):
+        '''
+        interpolate pose. 0 <= t <= 1.
+        '''
+        tvec1 = p1.to_tvec()
+        tvec2 = p2.to_tvec()
+        tvec = tvec1 + t * (tvec2 - tvec1)
+
+        q1 = p1.to_quaternion()
+        q2 = p2.to_quaternion()
+        Omega = np.arccos(np.dot(q1, q2))
+        q = (np.sin((1-t)*Omega) / np.sin(Omega) * q1) + (np.sin(t*Omega) / np.sin(Omega) * q2)
+
+        return Trans3D.from_quaternion(q, tvec)
 
     def moveRobotWaypoints(self,pose_list):
         for i in pose_list:
             if type(i) != int:
-                self.moveRobot(i)
+                self.moveStraightLine(i)
             else:
                 if i == 0:self.gripper_srv(position=255, speed=255, force=1)
                 elif i == 1: self.gripper_srv(position=125, speed=150, force=1)
@@ -246,7 +344,7 @@ class MotionPlanner:
         except KeyboardInterrupt:
             self.robot_client.cancel_goal() 
             raise
-    
+        
     def currentRobotPose(self):
         try:
             if self.isSim:

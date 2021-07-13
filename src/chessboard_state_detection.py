@@ -66,7 +66,7 @@ class NNVision:
         image = self.__undistortImage()
         image = cv2.cvtColor(image,cv2.COLOR_RGB2BGR)
         col = {'a':7,'b':6,'c':5,'d':4,'e':3,'f':2,'g':1,'h':0}
-        class_names = ['_', 'b', 'k', 'n', 'p', 'q', 'r', 'B', 'K', 'N', 'P', 'Q', 'R']
+        class_names = ['B', 'K', 'N', 'P', 'Q', 'R', '_', 'b', 'k', 'n', 'p', 'q', 'r']
         chessboard = np.zeros((8,8),dtype=str)
         img_list,key_list,count = [],[],0
         for key,value in self.square.items():

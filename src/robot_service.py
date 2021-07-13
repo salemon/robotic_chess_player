@@ -278,14 +278,14 @@ class RobotServer:
             return Trans3D.from_tfmatrix(square_pose)
 
     def __aboveSquarePose(self, square_pose):
-        point = Trans3D.from_tvec(np.array([0,0,-0.1]))
+        point = Trans3D.from_tvec(np.array([0,0,-0.12]))
         return square_pose * point
 
     def __pickDropPose(self,piece,start_pose,end_pose):
-        pickup_dict = {'k':0.06,'q':0.0585,'b':0.04,'n':0.0375,'r':0.032,'p':0.023}
+        pickup_dict = {'k':0.06,'q':0.0585,'b':0.04,'n':0.0375,'r':0.032,'p':0.024}
         pickup_height = pickup_dict[piece.lower()]
         pickup_pose = start_pose * Trans3D.from_tvec(np.array([0,0,-pickup_height]))
-        dropoff_pose = end_pose * Trans3D.from_tvec(np.array([0,0,-pickup_height + 0.0003]))
+        dropoff_pose = end_pose * Trans3D.from_tvec(np.array([0,0,-pickup_height]))
         return pickup_pose, dropoff_pose, pickup_height
 
     def __raiseUpHeight(self,start,end,action):
@@ -293,7 +293,7 @@ class RobotServer:
         chessboard = self.board.copy()
         piece = chessboard[start[0]][start[1]]
         if action == 'capturing':
-            return piece, 0.10
+            return piece, 0.12
         if action == 'castling':
             return piece, 0.055
         else:
@@ -312,28 +312,13 @@ class RobotServer:
         ra_e_pose = end_pose * Trans3D.from_tvec(np.array([0,0,-raiseup_height]))
         return ra_s_pose,ra_e_pose
 
-    def __strightPath(self,ra_s_pose,ra_e_pose):
-        ra_s_tfmtx,ra_e_tfmtx = ra_s_pose.to_tfmatrix(),ra_e_pose.to_tfmatrix()
-        tfmtx_distance = ra_e_tfmtx - ra_s_tfmtx
-        ra_s_tvec,ra_e_tvec = ra_s_pose.to_tvec(),ra_e_pose.to_tvec()
-        step = max(1, np.rint(norm(ra_s_tvec - ra_e_tvec)/0.09))
-        tfmtx_step = tfmtx_distance / step
-        path_pose, away_from_start = [ra_s_pose], 0
-        while step > 0:
-            ra_s_tfmtx += tfmtx_step
-            pose = Trans3D.from_tfmatrix(ra_s_tfmtx)
-            path_pose.append(pose)
-            step -= 1
-        return path_pose
-
     def pickAndPlace(self,piece, start, end, raiseup_height):
         s_pose, e_pose = self.__squarePose(start), self.__squarePose(end)
         ab_s_pose, ab_e_pose = self.__aboveSquarePose(s_pose), self.__aboveSquarePose(e_pose)
         pickup_pose, dropoff_pose, pickup_height = self.__pickDropPose(piece,s_pose,e_pose)
         raiseup_height = pickup_height + raiseup_height
         ra_s_pose,ra_e_pose = self.__raiseUpPose(raiseup_height,s_pose,e_pose)
-        middle_action = self.__strightPath(ra_s_pose,ra_e_pose) + [dropoff_pose]
-        waypoints = [[ab_s_pose, pickup_pose], 0,middle_action, 1, [ab_e_pose],2]
+        waypoints = [ab_s_pose, pickup_pose, 0,ra_s_pose,ra_e_pose,dropoff_pose, 1, ab_e_pose,2]
         self.manipulator.moveRobotWaypoints(waypoints)
         return None
 
