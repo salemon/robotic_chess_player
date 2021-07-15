@@ -10,24 +10,23 @@ class TaskPlanning():
     def __init__(self):
         #init ros node
         rospy.init_node("task_planning_node")
+        
         #connect to chess ai service
         self.ai_service = self.initService('chess_ai_service',ChessAI)
         #connect to robot service
         self.robot_service = self.initService('robot_service',RobotService)
         #connect to neural network service
         self.nn_service = self.initService('board_state', RobotService)
-        #subscribe message from gui
         
+        #subscribe message from gui
         self.gui_sub = rospy.Subscriber('/button', String, queue_size=5, callback=self.gui_callback)
         #set up the flag for actions
         self.locate_flag = False 
         self.detect_flag = False
         self.robot_flag = False
-        self.correct_flag = False
         # publishe task planning message to gui
         self.info_pub = rospy.Publisher('/info_msg', String, queue_size=5)
 
-        self.board = None
 
     def initService(self,service_name,service_message):
         rospy.wait_for_service(service_name)
@@ -42,7 +41,6 @@ class TaskPlanning():
             self.detect_flag = True
         if command.data[:7] == "confirm":
             self.board_msg = command.data.split(';')[1]
-            self.board = self.__msgToBoard(self.board_msg)
             self.robot_flag = True
       
     def run(self):
@@ -52,14 +50,14 @@ class TaskPlanning():
                 rospy.loginfo("locating chessboard position")
                 self.locating_chessboard()
                 self.locate_flag = False
-            if self.detect_flag:
+            elif self.detect_flag:
                 rospy.loginfo("detecting chessboard state")
                 state_msg = self.detecting_chessboard()
                 self.info_pub.publish('det;'+state_msg)
                 self.robot_service('to standby')
                 self.detect_flag = False
-            if self.robot_flag:
-                self.robot_move()
+            elif self.robot_flag:
+                self.robot_move(self.board_msg)
                 self.robot_flag = False
             rospy.sleep(0.1)
 
@@ -76,31 +74,22 @@ class TaskPlanning():
         else:
             msg = 'Location Failed, Please remove possible noise and locate again'
         self.info_pub.publish('loc;'+msg)
+        return None
 
     def detecting_chessboard(self):
         self.robot_service('to take image')
         return self.nn_service('state').feedback
 
-    def robot_move(self):
-        #received previous correct chessboard state string
-        #get the detection and revise 
-        #send back to GUI to verify and get the confirmed state
-        #transfrom to fen and sent to ai
-        #get the next move and send to robot service
-        '''this function needs to communicate with the gui
-        revise finished published the new message if the message'''
-        fen = self.__board2fen(self.board)
+    def robot_move(self,board_msg):
+        fen = self.__board2fen(board_msg)
         move = self.ai_service(fen).command
         if move != 'Game is over':
             new_board = self.robot_service('move:'+ self.board_msg + ';' + move).feedback
             self.info_pub.publish('mov;'+ new_board)
         else:self.info_pub.publish('mov;'+ move)
-         
-    def __msgToBoard(self,state_msg):
-        return np.array([list(i) for i in state_msg.split(',')])
 
-    def __board2fen(self,board):
-        board = np.rot90(board,2)
+    def __board2fen(self,board_msg):
+        board = np.rot90(np.array([list(i) for i in board_msg.split(',')]),2)
         with StringIO() as s:
             for row in board:
                 empty = 0

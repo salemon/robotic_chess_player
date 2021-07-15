@@ -6,6 +6,7 @@ from transformation import Trans3D
 from chessboard_pose_estimation import *
 from avt_camera import *
 from robotic_chess_player.srv import *
+import cv2
 
 class VisionDetector:
 
@@ -17,13 +18,13 @@ class VisionDetector:
         self.TCP2camera_pose = Trans3D.from_ROSParameterServer("/hand_eye_position")
         self.pose_estimator = ChessboardPoseEstimation(self.cam_mtx, self.dist)
         self.camera = AvtCamera()
-
+        #add chessboard parameter to config
     def takeImagePose(self, base2TCP_pose):
         self.camera.trigger_image()
-        camera2chessbaord_pose = self.pose_estimator.estimatePose(self.camera.lastest_img)
+        camera2chessbaord_pose = self.pose_estimator.camera_chessboard(self.camera.lastest_img)
         base2chessboard_pose = base2TCP_pose * self.TCP2camera_pose * camera2chessbaord_pose
-        z = (self.cam_mtx[0][0] * (-0.18)) / (400 - self.cam_mtx[0][2])
-        point_pose = Trans3D.from_tvec(np.array([0.18,0.18,-z+0.1338]))
+        z = (self.cam_mtx[0][0] * (-4*0.43)) / (100 - self.cam_mtx[0][2])
+        point_pose = Trans3D.from_tvec(np.array([4*0.43, 4*0.43, -z+0.1338]))
         inv_TCP2camera_pose = Trans3D.from_tfmatrix(inv(self.TCP2camera_pose.to_tfmatrix()))
         return [base2chessboard_pose * point_pose * inv_TCP2camera_pose]
       
@@ -62,4 +63,10 @@ class VisionDetector:
     def chessboardTOFen(self,board):
         fen = self.state_detector.boardTOFen(board)
         return fen
+
+    def takeImage(self):
+        self.camera.trigger_image()
+        cv2.imshow('img',self.camera.lastest_img)
+        cv2.waitKey(0) & 0xFF
+        cv2.destroyAllWindows()
 

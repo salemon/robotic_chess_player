@@ -1,29 +1,24 @@
-#!/usr/bin/env python
-import rospy
-from std_msgs.msg import String
+import cv2
+import numpy as np
+import math
+ 
+img = cv2.imread('frame0000.jpg')
 
-class TaskPlanning():
-    
-    def __init__(self):
-        '''
-        receive order from GUI node
-        prepare for a game
-        detect the chessboard state
-        send to chess ai to generate a move
-        move the robot'''
-        self.gui_sub = rospy.Subscriber('/button', String, queue_size=5, callback=self.gui_callback)
-        #set up the flag for actions
-        self.locate_flag = False 
-        self.detect_flag = False
-        self.robot_flag = False
-        self.correct_flag = False
-        # publishe task planning message to gui
-        self.info_pub = rospy.Publisher('/info_msg', String, queue_size=5)
-        #init ros node
-        rospy.init_node("task_planning_node")
-        #connect to chess ai service
-        self.ai_service = self.initService('chess_ai_service',ChessAI)
-        #connect to robot service
-        self.robot_service = self.initService('robot_service',RobotService)
-        #connect to neural network service
-        self.nn_service = self.initService('board_state', RobotService)
+# Create our shapening kernel, it must equal to one eventually
+kernel_sharpening = np.array([[-1,-1,-1], 
+                              [-1, 9,-1],
+                              [-1,-1,-1]])
+# applying the sharpening kernel to the input image & displaying it.
+sharpen = cv2.filter2D(img, -1, kernel_sharpening)
+dst = cv2.Canny(sharpen, 200, 250, None, 3)
+
+linesP = cv2.HoughLinesP(dst, 1, np.pi / 180, 50, None, 50, 10)
+if linesP is not None:
+    for i in range(0, len(linesP)):
+        l = linesP[i][0]
+        cv2.line(img, (l[0], l[1]), (l[2], l[3]), (0,0,255), 3, cv2.LINE_AA)
+cv2.imshow('Image Sharpening', img)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
+
+
