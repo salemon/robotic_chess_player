@@ -73,11 +73,15 @@ class RobotServer:
         self.manipulator.moveRobot(base2chessboard_pose)
         self.base2TCP_pose = self.manipulator.currentRobotPose()
         rospy.sleep(1)
+        self.detector.takeImage()
+        '''
         str_square_dict, self.base2chessboard_pose,str_square_text = self.detector.poseAndSquare(self.base2TCP_pose)
         goal = self.__gameStandby()
         self.manipulator.moveRobotJoint([goal])
         self.capture_piece = 0
         return "Done;"+str_square_dict
+        '''
+        return None
         #except:
         #    return "Fail"
 
