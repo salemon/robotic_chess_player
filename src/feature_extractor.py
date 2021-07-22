@@ -16,7 +16,7 @@ class FeatureExtractor():
         return np.int0(points)
 
     @staticmethod
-    def crop_img(img,col,row,r = 30):
+    def crop_image(img,col,row,r = 30):
         return img[row-r:row+r,col-r:col+r]
 
     @staticmethod
@@ -36,13 +36,13 @@ class FeatureExtractor():
             return False, None
 
     @staticmethod
-    def feature_filter(img):
-        row,col = img.shape
-        upper_left = np.bincount(img[5:12,5:12].reshape(1,49)[0]).argmax()
-        lower_left = np.bincount(img[row-12:row-5,5:12].reshape(1,49)[0]).argmax()
-        upper_right = np.bincount(img[5:12,col-12:col-5].reshape(1,49)[0]).argmax()
-        lower_right = np.bincount(img[row-12:row-5,col-12:col-5].reshape(1,49)[0]).argmax()
-        result = upper_left == lower_right and upper_right == lower_left and upper_left != upper_right
+    def __filter(image):
+        row,col = image.shape
+        upper_left = np.unique(image[0:10,0:10].reshape(1,100)[0])
+        lower_left = np.unique(image[row-10:row,0:10].reshape(1,100)[0])
+        upper_right = np.unique(image[0:10,col-10:col].reshape(1,100)[0])
+        lower_right = np.unique(image[row-10:row,col-10:col].reshape(1,100)[0])
+        result = (upper_left == lower_right).all() and (upper_right == lower_left).all() and (upper_left != upper_right).all()
         return result
     
     def chessboard_features(self, image):
@@ -51,12 +51,12 @@ class FeatureExtractor():
         features = []
         for p in points:
             col,row = p.ravel()
-            p_color_img = self.crop_img(image,col,row)
+            p_color_img = self.crop_image(image,col,row)
             ret_1, p_clustering_gray_img = self.color_clustering(p_color_img)
             if ret_1:
-                ret_2 = self.feature_filter(p_clustering_gray_img)
+                ret_2 = self.__filter(p_clustering_gray_img)
                 if ret_2:
-                    features.append([col,row])           
+                    features.append((col,row))          
         return features
 
     @staticmethod
@@ -114,7 +114,7 @@ class FeatureExtractor():
             else:corner = 'upper_left'
         return corner,np.array(imageP, dtype='float64')
 
-    def pose_estimation_points(self,image):
+    def general_pose_estimation_points(self,image):
         features = self.chessboard_features(image)
         np_features = np.array(features)
         hull = ConvexHull(np_features)
@@ -125,7 +125,7 @@ class FeatureExtractor():
         brightness = 255
         for i in pair:
             col,row = i.ravel()
-            candi_gray = cv2.cvtColor(self.crop_img(image,col,row,r = 150),cv2.COLOR_BGR2GRAY)
+            candi_gray = cv2.cvtColor(self.crop_image(image,col,row,r = 150),cv2.COLOR_BGR2GRAY)
             if type(candi_gray) == type(None):
                 continue 
             else:
@@ -136,32 +136,49 @@ class FeatureExtractor():
         corner, imageP = self.pClosest(features,origin)
         return corner,imageP
     
+    def closer_pose_estimation_points(self,image):
+        points = self.chessboard_features(image)
+        points.sort()
+        sorted_points = []
+        for n in range(0, len(points), 7):
+            sorted_points.extend(sorted(points[n:n+7], key= lambda x: x[1]))
+        return np.array(sorted_points, dtype='float64')
+
 if __name__ == "__main__":
     vision = FeatureExtractor()
     img = cv2.imread('frame0000.jpg')
-    # 1
-    blur=cv2.GaussianBlur(img,(0,0),3)
-    image=cv2.addWeighted(img,1.5,blur,-0.5,0)
-    # 2
-    kernel = np.array([[-1,-1,-1], [-1,9,-1], [-1,-1,-1]])
-    image = cv2.filter2D(img, -1, kernel)
-    # 3
-    image=cv2.bilateralFilter(img,9,75,75)
-    # 4
-    sigma = 1; threshold = 5; amount = 1
-    blurred=cv2.GaussianBlur(img,(0,0),1,None,1)
-    lowContrastMask = abs(img - blurred) < threshold
-    sharpened = img*(1+amount) + blurred*(-amount)
-    image=cv2.bitwise_or(sharpened.astype(np.uint8),lowContrastMask.astype(np.uint8))
-    _,gray_img = vision.color_clustering(image)
-    '''
-    for p in points:
+    #points = vision.chessboard_features(img)
+    count = 1
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    
+    # fontScale
+    fontScale = 1
+    
+    # Red color in BGR
+    color = (0, 0, 255)
+    
+    # Line thickness of 2 px
+    thickness = 2
+    points.sort()
+    N = 7
+    sorted_points = []
+    def sortPoint(val):
+        return (val[0]**2 + val[1]**2)**(1/2)
+    for n in range(0, len(points), N):
+        sorted_points.extend(sorted(points[n:n+N], key= lambda x: x[1]))
+    print(sorted_points)
+    
+    for p in sorted_points:
         x,y = p
-        cv2.circle(new_image,(int(x),int(y)),3,(255,0,0),-1)
-    '''
-    cv2.imshow('img',gray_img)
+        cv2.circle(img,(int(x),int(y)),3,(0,0,255),-1)
+        img = cv2.putText(img, str(count), (int(x),int(y)), font, 
+                   fontScale, color, thickness, cv2.LINE_AA)
+        print(str(count),(int(x),int(y)))
+        count += 1
+    cv2.imshow('img',img)
     cv2.waitKey(0) & 0xFF
     cv2.destroyAllWindows()
+    
 
 
 

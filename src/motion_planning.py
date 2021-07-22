@@ -351,12 +351,13 @@ class MotionPlanner:
                 ee_frame = 'tool0'
             else:
                 ee_frame = 'tool0_controller'
-            trans = self.tfBuffer.lookup_transform('base', ee_frame, rospy.Time.now(), rospy.Duration(0.5))
+            trans = self.tfBuffer.lookup_transform('base', ee_frame, rospy.Time(0))
         except:
             rospy.logerr("Failed to get the current robot pose.")
         return Trans3D.from_TransformStamped(trans)  
 
 if __name__ == "__main__":
+    from transformation import Trans3D
     rospy.init_node('motion_planning_test')
     mp = MotionPlanner()
     rospy.sleep(1)
@@ -367,3 +368,6 @@ if __name__ == "__main__":
     mp.jog(np.array([0,0.05,0.05]))
     rospy.sleep(1)
     mp.jog(np.array([0,-0.05,-0.05]))
+    rospy.sleep(1)
+    pose = Trans3D.from_tfmatrix(np.array([[-1,0,0,0],[0,1,0,-0.5],[0,0,-1,0.5],[0,0,0,1]]))
+    mp.moveRobot([pose])

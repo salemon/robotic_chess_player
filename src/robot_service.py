@@ -69,22 +69,25 @@ class RobotServer:
         self.manipulator.moveRobotJoint([[90,-135,90,-70,-90,0.0]])
         rospy.sleep(1)
         base2TCP_pose = self.manipulator.currentRobotPose()
-        base2chessboard_pose = self.detector.takeImagePose(base2TCP_pose)
-        self.manipulator.moveRobot(base2chessboard_pose)
-        self.base2TCP_pose = self.manipulator.currentRobotPose()
+        closer_pose = self.detector.closer_view_pose(base2TCP_pose)
+        self.manipulator.moveRobot([closer_pose])
         rospy.sleep(1)
-        self.detector.takeImage()
+        base2TCP_pose = self.manipulator.currentRobotPose()
+        self.base2chessboard_pose = self.detector.chessboard_position(base2TCP_pose)
+        print(self.base2chessboard_pose.to_tfmatrix())
+        return 'Done'
+        
         '''
         str_square_dict, self.base2chessboard_pose,str_square_text = self.detector.poseAndSquare(self.base2TCP_pose)
         goal = self.__gameStandby()
         self.manipulator.moveRobotJoint([goal])
         self.capture_piece = 0
         return "Done;"+str_square_dict
-        '''
-        return None
         #except:
         #    return "Fail"
-
+        
+        return None
+        '''
     def chessboardState(self):
         self.manipulator.moveRobot([self.base2TCP_pose])
         chessboard = self.detector.chessboardState()
@@ -119,7 +122,7 @@ class RobotServer:
             return s.getvalue()
 
     def __dropPieceSpot(self,number, x_num = 11,y_num = 6):
-        unit_length = 0.045/2
+        unit_length = 0.043/2
         y_num += number % 3
         x_num += number / 3
         x, y = (2*x_num-1) * unit_length, (2*y_num-1) * unit_length
@@ -272,13 +275,12 @@ class RobotServer:
             self.capture_piece += 1
             return spot
         else:
-            unit_length = 0.045/2
+            unit_length = 0.043/2
             alf_dict = {'h':1,'g':2,'f':3,'e':4,'d':5,'c':6,'b':7,'a':8}
             x, y = (2*alf_dict[square[0]]-1) * unit_length, (2*(int(square[1:]))-1) * unit_length
             point = Trans3D.from_tvec(np.array([x, y, 0]))
             square_pose = (self.base2chessboard_pose * point).to_tfmatrix()
-            square_pose[2,3] = 0.1801
-            square_pose[1,3] += 0.0065
+            square_pose[2,3] = 0.172
             return Trans3D.from_tfmatrix(square_pose)
 
     def __aboveSquarePose(self, square_pose):

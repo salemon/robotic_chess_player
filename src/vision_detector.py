@@ -18,13 +18,26 @@ class VisionDetector:
         self.TCP2camera_pose = Trans3D.from_ROSParameterServer("/hand_eye_position")
         self.pose_estimator = ChessboardPoseEstimation(self.cam_mtx, self.dist)
         self.camera = AvtCamera()
-        #add chessboard parameter to config
+
+    def closer_view_pose(self, base2TCP_pose):
+        self.camera.trigger_image()
+        camera2chessbaord_pose = self.pose_estimator.detect_chessboard(self.camera.lastest_img)
+        z = (self.cam_mtx[1][1] / (1 - self.cam_mtx[1][2]) * (-4 * 0.043) + 
+        self.cam_mtx[0][0] / (200 - self.cam_mtx[0][2]) * (-4 * 0.043)) / 2
+        inv_TCP2camera_pose = Trans3D.from_tfmatrix(inv(self.TCP2camera_pose.to_tfmatrix()))
+        return base2TCP_pose * self.TCP2camera_pose * camera2chessbaord_pose * Trans3D.from_tvec(np.array([4*0.043, 4*0.043, -z])) * inv_TCP2camera_pose
+
+    def chessboard_position(self,base2TCP_pose):
+        self.camera.trigger_image()
+        camera2chessboard_pose = self.pose_estimator.locate_chessboard(self.camera.lastest_img)
+        return base2TCP_pose * self.TCP2camera_pose * camera2chessboard_pose
+        
     def takeImagePose(self, base2TCP_pose):
         self.camera.trigger_image()
         camera2chessbaord_pose = self.pose_estimator.camera_chessboard(self.camera.lastest_img)
         base2chessboard_pose = base2TCP_pose * self.TCP2camera_pose * camera2chessbaord_pose
-        z = (self.cam_mtx[0][0] * (-4*0.43)) / (100 - self.cam_mtx[0][2])
-        point_pose = Trans3D.from_tvec(np.array([4*0.43, 4*0.43, -z+0.1338]))
+        z = (self.cam_mtx[0][0] * (-4*0.043)) / (100 - self.cam_mtx[0][2])
+        point_pose = Trans3D.from_tvec(np.array([5*0.043, 4*0.043, -z+0.1338]))
         inv_TCP2camera_pose = Trans3D.from_tfmatrix(inv(self.TCP2camera_pose.to_tfmatrix()))
         return [base2chessboard_pose * point_pose * inv_TCP2camera_pose]
       
