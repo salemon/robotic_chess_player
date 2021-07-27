@@ -4,11 +4,10 @@ import rospy
 import numpy as np
 from std_msgs.msg import String
 
-
 class Ui_MainWindow(object):
     def __init__(self):
         rospy.init_node("gui_node")
-        self.info_sub = rospy.Subscriber("/info_msg", String, queue_size=5, callback=self.info_callback)
+        self.info_sub = rospy.Subscriber("/info_msg", String, queue_size=5, callback=self.infoCallback)
         self.command_pub = rospy.Publisher("/button", String, queue_size=2)
         self.board = None
         
@@ -56,20 +55,23 @@ class Ui_MainWindow(object):
         self.confirm.setText(_translate("MainWindow", "Confirm"))
         self.correct_chessboard.setText(_translate("MainWindow", "Correct Chessboard"))
 
-    def info_callback(self, msg):
+    def infoCallback(self, msg):
         '''Input: message scribed from robot planning'''
         ret, info = msg.data.split(';')
         if ret ==  'loc':
             self.info_text.append(info)
+            self.info_text.append(' ')
         if ret == 'det':
             board = np.array([list(i) for i in info.split(',')])
             self.board = self.__systemRevise(board)
-            self.info_text.append(str(self.board)[1:-1])
+            self.info_text.append(' ' + str(self.board)[1:-1])
+            self.info_text.append(' ')
         if ret == 'mov':
             if info != 'Game is over':
-                board_str = self.__msgToBoard(info)
                 self.info_text.append('Robot finished the move')
-                self.info_text.append(board_str)
+                self.info_text.append(' ')
+                self.info_text.append(self.__msgToBoard(info))
+                self.info_text.append(' ')
             else:self.info_text.append('Game is over')
         scrollbar = self.info_text.verticalScrollBar()
         rospy.sleep(0.01)
@@ -88,43 +90,45 @@ class Ui_MainWindow(object):
 
     def __msgToBoard(self,state_msg):
         self.board = np.array([list(i) for i in state_msg.split(',')])
-        return str(self.board)[1:-1]
+        return ' ' + str(self.board)[1:-1]
 
     def connectButtom(self):
-        self.locate_chessboard.clicked.connect(self.locate_chessboard_clicked) 
-        self.detect_chessboard.clicked.connect(self.detect_chessboard_clicked)
-        self.confirm.clicked.connect(self.confirm_clicked)
-        self.correct_chessboard.clicked.connect(self.correct_chessboard_clicked)
+        self.locate_chessboard.clicked.connect(self.locateChessboardClicked) 
+        self.detect_chessboard.clicked.connect(self.detectChessboardClicked)
+        self.confirm.clicked.connect(self.confirmClicked)
+        self.correct_chessboard.clicked.connect(self.correctChessboardClicked)
     
-    def locate_chessboard_clicked(self):
+    def locateChessboardClicked(self):
         msg = String("locate chessboard")
         self.command_pub.publish(msg)
     
-    def detect_chessboard_clicked(self):
+    def detectChessboardClicked(self):
         msg = String("detect chessboard")
         self.command_pub.publish(msg)
     
-    def correct_chessboard_clicked(self):
+    def correctChessboardClicked(self):
         # get correction string
         if type(self.board) == type(None):
             self.info_text.append("Please detect the chessboard first")
+            self.info_text.append(' ')
         else:
             corr_comm = self.plainTextEdit.toPlainText()
             outcome = self.__humanRevise(corr_comm)
             self.info_text.append(outcome)
+            self.info_text.append(' ')
     
     def __humanRevise(self,corr_comm):
         col = {'a':7,'b':6,'c':5,'d':4,'e':3,'f':2,'g':1,'h':0}
         try:
             square,piece = corr_comm.split(' ')
             self.board[int(square[1])-1,col[square[0]]] = piece
-            return str(self.board)[1:-1]
+            return ' ' + str(self.board)[1:-1]
         except:
             return 'Correction message formate is incorrect'
 
-    def confirm_clicked(self):
+    def confirmClicked(self):
         board_msg = self.__boardToMsg()
-        self.command_pub.publish('confirm;'+board_msg)
+        self.command_pub.publish('confirm;' + board_msg)
     
     def __boardToMsg(self):
         board_msg = str()
@@ -134,7 +138,6 @@ class Ui_MainWindow(object):
                 row_msg += i
             board_msg += row_msg + ','
         return board_msg[:-1]  
-    #borad to fen to ai_node
 
 if __name__ == "__main__":
     import sys

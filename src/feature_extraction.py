@@ -4,7 +4,7 @@ from numpy import linalg as LA
 from scipy.spatial import ConvexHull
 from scipy.spatial.distance import cdist
 
-class FeatureExtractor():
+class FeatureExtraction():
 
     @staticmethod
     def point_detection(gray_img):
@@ -114,7 +114,7 @@ class FeatureExtractor():
             else:corner = 'upper_left'
         return corner,np.array(imageP, dtype='float64')
 
-    def general_pose_estimation_points(self,image):
+    def general_pose_points(self,image):
         features = self.chessboard_features(image)
         np_features = np.array(features)
         hull = ConvexHull(np_features)
@@ -136,51 +136,42 @@ class FeatureExtractor():
         corner, imageP = self.pClosest(features,origin)
         return corner,imageP
     
-    def closer_pose_estimation_points(self,image):
+    def closer_view_estimation_points(self,image):
         points = self.chessboard_features(image)
-        points.sort()
+        points.sort(key = lambda x: x[1])
         sorted_points = []
         for n in range(0, len(points), 7):
-            sorted_points.extend(sorted(points[n:n+7], key= lambda x: x[1]))
+            sorted_points.extend(sorted(points[n:n+7]))
         return np.array(sorted_points, dtype='float64')
 
 if __name__ == "__main__":
-    vision = FeatureExtractor()
+    import ast
+    vision = FeatureExtraction()
     img = cv2.imread('frame0000.jpg')
-    #points = vision.chessboard_features(img)
-    count = 1
+    #points = vision.closer_view_estimation_points(img)
+    #count = 1
     font = cv2.FONT_HERSHEY_SIMPLEX
-    
+    square_dict = "Done {'f1': [83, 206, 538, 661], 'f2': [205, 327, 539, 662], 'f3': [327, 449, 539, 662], 'f4': [449, 571, 539, 662], 'd8': [937, 1060, 784, 908], 'f6': [693, 815, 540, 663], 'f7': [816, 938, 540, 663], 'f8': [938, 1061, 540, 664], 'h3': [328, 450, 296, 418], 'h1': [84, 206, 295, 418], 'h6': [693, 816, 296, 419], 'h7': [816, 939, 297, 420], 'h4': [449, 572, 296, 419], 'h5': [571, 694, 296, 419], 'b4': [447, 570, 1028, 1152], 'b5': [569, 692, 1029, 1152], 'b6': [691, 814, 1029, 1153], 'b7': [815, 938, 1029, 1153], 'b1': [81, 204, 1027, 1151], 'b2': [203, 326, 1027, 1151], 'b3': [325, 448, 1028, 1151], 'd6': [692, 815, 784, 907], 'd7': [815, 938, 784, 907], 'd4': [448, 571, 783, 906], 'd5': [570, 693, 783, 907], 'b8': [937, 1060, 1030, 1153], 'e7': [815, 938, 662, 785], 'd1': [82, 205, 782, 905], 'f5': [571, 693, 540, 663], 'e1': [83, 205, 660, 783], 'e5': [570, 693, 661, 785], 'd3': [326, 449, 783, 906], 'h2': [206, 328, 295, 418], 'e3': [326, 449, 661, 784], 'h8': [938, 1061, 297, 420], 'e2': [205, 327, 660, 784], 'g7': [816, 939, 418, 541], 'g6': [693, 816, 418, 541], 'g5': [571, 694, 418, 541], 'g4': [449, 572, 417, 541], 'g3': [327, 450, 417, 540], 'g2': [205, 328, 417, 540], 'g1': [84, 206, 417, 540], 'e4': [448, 571, 661, 784], 'g8': [938, 1061, 419, 542], 'a1': [81, 203, 1149, 1273], 'a3': [325, 447, 1150, 1274], 'c8': [937, 1060, 906, 1030], 'a5': [569, 692, 1151, 1274], 'a4': [447, 570, 1150, 1274], 'a7': [814, 937, 1152, 1275], 'a6': [691, 814, 1151, 1275], 'c3': [326, 448, 905, 1028], 'a8': [937, 1060, 1152, 1276], 'c1': [82, 204, 904, 1027], 'e6': [692, 815, 662, 785], 'c7': [815, 938, 906, 1030], 'c6': [692, 815, 906, 1029], 'c5': [570, 692, 905, 1029], 'c4': [448, 570, 905, 1029], 'd2': [204, 327, 782, 906], 'a2': [203, 325, 1150, 1273], 'c2': [204, 326, 904, 1028], 'e8': [937, 1060, 662, 786]}"
     # fontScale
     fontScale = 1
     
-    # Red color in BGR
-    color = (0, 0, 255)
+    # Blue color in BGR
+    color = (255, 0, 0)
     
     # Line thickness of 2 px
     thickness = 2
-    points.sort()
-    N = 7
-    sorted_points = []
-    def sortPoint(val):
-        return (val[0]**2 + val[1]**2)**(1/2)
-    for n in range(0, len(points), N):
-        sorted_points.extend(sorted(points[n:n+N], key= lambda x: x[1]))
-    print(sorted_points)
-    
-    for p in sorted_points:
-        x,y = p
-        cv2.circle(img,(int(x),int(y)),3,(0,0,255),-1)
-        img = cv2.putText(img, str(count), (int(x),int(y)), font, 
-                   fontScale, color, thickness, cv2.LINE_AA)
-        print(str(count),(int(x),int(y)))
-        count += 1
-    cv2.imshow('img',img)
+    image = cv2.rectangle(img, (83, 206), (538, 661), color, thickness)
+    # Using cv2.putText() method
+    '''
+    for key in square_dict:
+        print(square_dict[key])
+        
+        #img = cv2.putText(img, str(count), (int(x),int(y)), font, 
+        #           fontScale, color, thickness, cv2.LINE_AA)
+        #count += 1
+    '''
+    cv2.imshow('img',image)
     cv2.waitKey(0) & 0xFF
     cv2.destroyAllWindows()
-    
-
-
-
 
 

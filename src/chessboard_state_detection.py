@@ -21,10 +21,8 @@ class NNVision:
     def __init__(self):
         self.server = rospy.Service('board_state',RobotService,self.serviceHandler)
         self.camera = AvtCamera()
-        K = rospy.get_param('/camera_calibration/K')
-        self.camera_matrix = np.array(K).reshape((3,3))
-        D = rospy.get_param('/camera_calibration/D')
-        self.dist_coeff = np.array(D)
+        self.CAM_MTX = np.array(rospy.get_param('/camera_calibration/K')).reshape((3,3))
+        self.DIST = np.array(rospy.get_param('/camera_calibration/D'))
         rospack = rospkg.RosPack()
         nn_path = rospack.get_path('robotic_chess_player')+'/src/best.pth'
         self.model = self.load_model(nn_path)
@@ -48,8 +46,8 @@ class NNVision:
     def __undistortImage(self):
         self.camera.trigger_image()
         h,  w = self.camera.lastest_img.shape[:2]
-        newcameramtx, roi=cv2.getOptimalNewCameraMatrix(self.camera_matrix,self.dist_coeff,(w,h),1,(w,h))
-        dst = cv2.undistort(self.camera.lastest_img, self.camera_matrix, self.dist_coeff, None, newcameramtx)
+        newcameramtx, roi=cv2.getOptimalNewCameraMatrix(self.CAM_MTX,self.DIST,(w,h),1,(w,h))
+        dst = cv2.undistort(self.camera.lastest_img, self.CAM_MTX, self.DIST, None, newcameramtx)
         x,y,w,h = roi
         dst = dst[y:y+h, x:x+w]
         return dst

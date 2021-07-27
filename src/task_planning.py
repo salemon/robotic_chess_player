@@ -77,7 +77,7 @@ class TaskPlanning():
         return None
 
     def detecting_chessboard(self):
-        self.robot_service('to take image')
+        self.robot_service('detect chessboard state')
         return self.nn_service('state').feedback
 
     def robot_move(self,board_msg):
@@ -110,7 +110,6 @@ class TaskPlanning():
             s.write(' b KQkq - 0 1')
             return s.getvalue()
 
-    
 if __name__ == "__main__":
     try:
         obj = TaskPlanning()

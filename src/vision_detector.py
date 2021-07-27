@@ -30,8 +30,11 @@ class VisionDetector:
     def chessboard_position(self,base2TCP_pose):
         self.camera.trigger_image()
         camera2chessboard_pose = self.pose_estimator.locate_chessboard(self.camera.lastest_img)
-        return base2TCP_pose * self.TCP2camera_pose * camera2chessboard_pose
-        
+        pose = base2TCP_pose * self.TCP2camera_pose * camera2chessboard_pose
+        pose = pose.to_tfmatrix()
+        base2chessboard_pose = pose * Trans3D.from_tvec(np.array([0,0,-0.145]))
+        return base2chessboard_pose
+
     def takeImagePose(self, base2TCP_pose):
         self.camera.trigger_image()
         camera2chessbaord_pose = self.pose_estimator.camera_chessboard(self.camera.lastest_img)
