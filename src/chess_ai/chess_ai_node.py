@@ -18,6 +18,7 @@ def service_handle(msg):
     board = chess.Board(msg.chess_board_state)
     time_limit = chess.engine.Limit(time = 0.1)
     try:
+        print(board)
         if not board.is_game_over():
             action = engine.play(board,time_limit)
             chess_move = str(action.move)

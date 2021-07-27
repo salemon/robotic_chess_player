@@ -1,3 +1,4 @@
+import os
 import rospy
 import numpy as np
 from transformation import Trans3D
@@ -16,7 +17,7 @@ class VisualDetector:
         self.camera = AvtCamera()
         self.feature_extractor = FeatureExtraction()
         self.TCP2camera_pose = Trans3D.from_ROSParameterServer("/hand_eye_position")
-        self.HEIGHT = -0.1567
+        self.HEIGHT = -0.156
 
     def closer_view_pose(self, base2TCP_pose):
         self.camera.trigger_image()
@@ -62,6 +63,24 @@ class VisualDetector:
                 self.square_dict[key] = [square_ul[1]+int(num_constant*(num/7-8/7)),square_lr[1]+int(num_constant*(num/7-1/7)),
                 square_ul[0]+int(alf_constant*((alf+1)/7-8/7)),square_lr[0]+int(alf_constant*((alf+1)/7-1/7))]
         return str(self.square_dict)
+
+    def crop_image(self,image, square, path,count):
+        image = self.__undistortImage(image)
+        for sq in square:
+            p = self.square_dict[sq]
+            square_img = image[p[0]:p[1],p[2]:p[3]]
+            name = os.path.join(path, '{}.jpg'.format(count))
+            cv2.imwrite(name,square_img)
+            count += 1
+        return count
+
+    def __undistortImage(self,image):
+        h,  w = image.shape[:2]
+        newcameramtx, roi=cv2.getOptimalNewCameraMatrix(self.CAM_MTX,self.DIST,(w,h),1,(w,h))
+        dst = cv2.undistort(image, self.CAM_MTX, self.DIST, None, newcameramtx)
+        x,y,w,h = roi
+        dst = dst[y:y+h, x:x+w]
+        return dst
 
 if __name__ == "__main__":
     vision = VisualDetector()

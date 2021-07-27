@@ -12,11 +12,11 @@ class TaskPlanning():
         rospy.init_node("task_planning_node")
         
         #connect to chess ai service
-        self.ai_service = self.initService('chess_ai_service',ChessAI)
+        self.ai_service = self.init_service('chess_ai_service',ChessAI)
         #connect to robot service
-        self.robot_service = self.initService('robot_service',RobotService)
+        self.robot_service = self.init_service('robot_service',RobotService)
         #connect to neural network service
-        self.nn_service = self.initService('board_state', RobotService)
+        self.nn_service = self.init_service('board_state', RobotService)
         
         #subscribe message from gui
         self.gui_sub = rospy.Subscriber('/button', String, queue_size=5, callback=self.gui_callback)
@@ -28,7 +28,7 @@ class TaskPlanning():
         self.info_pub = rospy.Publisher('/info_msg', String, queue_size=5)
 
 
-    def initService(self,service_name,service_message):
+    def init_service(self,service_name,service_message):
         rospy.wait_for_service(service_name)
         service = rospy.ServiceProxy(service_name, service_message)
         rospy.loginfo('Successfully connected to {}'.format(service_name))
