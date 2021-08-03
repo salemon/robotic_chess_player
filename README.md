@@ -33,37 +33,15 @@ development. ![software overview](doc/software_overview.png)
 ### Prerequisites
 #### 1. Install ROS driver for Universal Robot.
 Follow the [documented instruction](https://github.com/UniversalRobots/Universal_Robots_ROS_Driver#building) in the offical Universal Robot ROS driver package.
-#### 2. Build Universal_Robots_ROS_Driver
-```bash
-# Assuming your ROS workspace is called my_catkin_ws, inside the home directory.
-$ cd ~/my_catkin_ws/src
 
-# clone the driver
-$ git clone https://github.com/UniversalRobots/Universal_Robots_ROS_Driver.git
-
-# clone fork of the description. This is currently necessary, until the changes are merged upstream.
-$ git clone -b calibration_devel https://github.com/fmauch/universal_robot.git
-
-# install dependencies
-$ rosdep install --from-paths src --ignore-src -y
-
-# build the workspace. We need an isolated build because of the non-catkin library package.
-$ cd ~/my_catkin_ws
-$ catkin_make
-```
-Make sure that the `ros_controllers` and `moveit????` is installed.
-```
-$ sudo apt-get install ros-melodic-ros-controllers ros-melodic-moveit
-```
-
-#### 3. Install AVT camera driver
+#### 2. Install AVT camera driver
 The camera driver is hosted in a [separate package](https://github.com/macs-lab/avt_camera#usage).
 Please follow instruction there to install the camera Vimba driver (required for AVT camea) and clone
 the avt_camera package.
 
 If a camera other than the [Mako camera](https://www.alliedvision.com/en/products/cameras/detail/Mako%20G/G-131.html) is used, please create a similar ROS driver that listen to the `/trigger` topic and publish the extracted image data to `/avt_camera_img` topic.
 
-#### 4. Install Hand-E gripper driver
+#### 3. Install Hand-E gripper driver
 The ROS driver for hand-e gripper is hosted [here](https://github.com/macs-lab/robotiq_hande_ros_driver). Just clone and build the sorce code.
 ```bash
 $ cd ~/my_catkin_ws/src
@@ -71,7 +49,7 @@ $ git clone https://github.com/macs-lab/robotiq_hande_ros_driver.git
 $ cd ..
 $ catkin_make
 ```
-#### 5. Install Python3
+#### 4. Install Python3
 ROS melodic was build with python2. In order to use `pytorch` and `pyqt5`, we need to install python3 as well.
 ```bash
 # check which python3 version in the system. If you have already install python3 version >= 3.6, you are good to go.
@@ -83,13 +61,13 @@ $ sudo apt-get update
 $ sudo apt-get install python3.6
 ```
 
-#### 6. Install required python library and software
+#### 5. Install required python library and software
 ```bash
 # install python packages with pip
 $ pip install pytransform3d numpy 
 ```
 
-#### 7. Clone and build source code
+#### 6. Clone and build source code
 ```bash
 # clone source code
 $ cd ~/my_catkin_ws/src
