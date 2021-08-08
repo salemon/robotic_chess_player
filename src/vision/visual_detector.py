@@ -14,15 +14,15 @@ from avt_camera import *
 
 class VisualDetector:
 
-    def __init__(self, edge):
+    def __init__(self):
         self.CAM_MTX = np.array(rospy.get_param('/camera_calibration/K')).reshape((3,3))
         self.DIST = np.array(rospy.get_param('/camera_calibration/D'))
-        self.EDGE = edge
+        self.EDGE = float(rospy.get_param('/parameter/edge'))
         self.pose_estimator = PoseEstimation(self.CAM_MTX, self.DIST, self.EDGE)
         self.camera = AvtCamera()
         self.feature_extractor = FeatureExtraction()
         self.TCP2camera_pose = Trans3D.from_ROSParameterServer("/hand_eye_position")
-        self.HEIGHT = -0.156
+        self.HEIGHT = float(rospy.get_param('/parameter/height'))
 
     def closer_view_pose(self, base2TCP_pose):
         self.camera.trigger_image()

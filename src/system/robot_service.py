@@ -26,8 +26,7 @@ class RobotServer:
         self.manipulator = MotionPlanner()
         self.board = None
         self.standby = (90,-135,90,-70,-90,0.0)
-        self.EDGE = 0.043
-        self.detector = VisualDetector(self.EDGE)
+        self.detector = VisualDetector()
         self.camera = AvtCamera()
 
     def serviceHandler(self,msg):

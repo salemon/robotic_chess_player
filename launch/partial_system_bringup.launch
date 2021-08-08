@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<launch>
+    <!-- load the required parameter -->
+    <rosparam command="load" file="$(find robotic_chess_player)/config/camera_hand_eye_calibration.yaml" />
+    <!-- launch avt camera -->
+    <include file="$(find robotic_chess_player)/launch/camera_bringup_freerun.launch" />
+    <!-- launch gripper -->
+    <include file="$(find robotic_chess_player)/launch/gripper_bringup.launch" />
+    <!-- rosrun robot_service node  -->
+    <node pkg="robotic_chess_player" type="robot_service.py" name="robot_service_node" />
+</launch>
