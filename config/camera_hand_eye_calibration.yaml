@@ -9,3 +9,9 @@ hand_eye_position:
   rotation: [-0.0136107, -0.0151583, -0.00612233, 0.999774]
   # translation
   translation: [-0.0009842798956918959, -0.08639863238236004, 0.06995709924091097]
+parameter:
+  # chessboard square's length 
+  edge: 0.043
+  # compensation of pose estimation error in z direction
+  height: -0.156
+
