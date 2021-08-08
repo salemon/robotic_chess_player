@@ -4,8 +4,17 @@ import rospy
 from robotic_chess_player.srv import RobotService,RobotServiceResponse
 import numpy as np
 from numpy.linalg import norm
+import rospkg
+import sys
+r = rospkg.RosPack()
+path_1 = r.get_path('robotic_chess_player') + '/src/motion'
+sys.path.append(path_1)
 from motion_planning import *
+path_2 = r.get_path('robotic_chess_player') + '/src/vision'
+sys.path.append(path_2)
 from visual_detector import *
+path_3 = r.get_path('robotic_chess_player') + '/src/include'
+sys.path.append(path_3)
 from transformation import Trans3D
 from avt_camera import *
 

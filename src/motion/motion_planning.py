@@ -4,16 +4,19 @@ import rospy
 from sensor_msgs.msg import JointState
 import rospkg
 r = rospkg.RosPack()
-path = r.get_path('robotic_chess_player') + '/src/include/ikfastpy/'
-print(path)
+path_1 = r.get_path('robotic_chess_player') + '/src/include/ikfastpy/'
+print(path_1)
 import sys
-sys.path.append(path)
+sys.path.append(path_1)
 import ikfastpy
 import numpy as np
 import tf2_ros
 import actionlib
 from control_msgs.msg import *
 from trajectory_msgs.msg import *
+path_2 = r.get_path('robotic_chess_player') + '/src/include'
+print(path_2)
+sys.path.append(path_2)
 from transformation import Trans3D 
 gripper_path = r.get_path('robotiq_hande_ros_driver')
 sys.path.append(gripper_path)

@@ -1,11 +1,16 @@
 import os
 import rospy
 import numpy as np
-from transformation import Trans3D
-from avt_camera import *
 from pose_estimation import *
 from feature_extraction import *
 from numpy.linalg import inv
+import rospkg
+r = rospkg.RosPack()
+path_1 = r.get_path('robotic_chess_player') + '/src/include'
+import sys
+sys.path.append(path_1)
+from transformation import Trans3D
+from avt_camera import *
 
 class VisualDetector:
 

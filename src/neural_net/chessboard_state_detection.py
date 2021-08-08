@@ -1,13 +1,18 @@
 #!/usr/bin/env python3
 import rospy
 from robotic_chess_player.srv import RobotService,RobotServiceResponse
-from avt_camera import *
 import cv2
 import numpy as np
 import torch
 from torchvision import transforms
 import rospkg
 from cv_bridge import CvBridge,CvBridgeError
+import rospkg
+r = rospkg.RosPack()
+path_1 = r.get_path('robotic_chess_player') + '/src/include/'
+import sys
+sys.path.append(path_1)
+from avt_camera import *
 
 class NNVision:
     #ros service, request: string, response: string
@@ -24,7 +29,7 @@ class NNVision:
         self.CAM_MTX = np.array(rospy.get_param('/camera_calibration/K')).reshape((3,3))
         self.DIST = np.array(rospy.get_param('/camera_calibration/D'))
         rospack = rospkg.RosPack()
-        nn_path = rospack.get_path('robotic_chess_player')+'/src/best.pth'
+        nn_path = rospack.get_path('robotic_chess_player')+'/src/neural_net/best.pth'
         self.model = self.load_model(nn_path)
         rospy.loginfo('neural network is ready to go!')
 
