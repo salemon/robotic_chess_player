@@ -166,6 +166,10 @@ It contains the camera calibration results as well as the hand-eye position.
 Copy the file and put it into `/robotic_chess_player/config` folder.
 
 ### 5. Chessboard's square length and compensation of z direction's error 
+* The currently used chessboard is 0.043 meters for each of its squares. 
+* The pose estimation result has a certain amount of error in the z-direction, so compensation needs to be added to the z-direction. The current compensation value is -0.156 meters. A more negative value means the gripper is raised more away from the chessboard surface and vice versa. 
+* The square's length and compensation are manually saved in the `camera_hand_eye_calibration.yaml` file. **Please adjust them if a new chessboard is used. Remember, the unit is meters.**
+* The process of getting the proper compensation value will be elaborated in **Usage** section
 
 # Usage
 ## Start the entire system 
@@ -197,3 +201,19 @@ A GUI windonw will show up after finish step 3 and it looks like the image below
 3. Enter false detections' square and correct piece type in the dialog box on the right and click `Correct Chessboard`. The formate of the comment is first to specify which square in lowercase, press space, and enter the correct piece's type. Each type of chess piece is using one letter. Capital letter means white and lowercase letter represents black. Piece type: k(king), q(queen), r(rook), n(knight), b(bishop), p(pawn).
 4. Click `Confirm` to make the system search for the best chess move and perform that move through driving the robotic arm.
 
+## Automatically collecting image data
+The system positions the camera vertically and right above the center of the chessboard for a particular height to detect the chessboard state. Therefore the current automatically image collecting function also takes images at the same position.
+### 1. Bring up UR5e robot driver
+### 2. Roslaunch partial system 
+```bash
+$ roslaunch robotic_chess_player partial_system_bringup.launch 
+```
+### 3. Bring up rqt
+```bash
+$ rosrun rqt_service_caller t_service_caller
+```
+### 4. Change the server caller topic to `robot_service`, and type in the `locate chessboard` in the expression
+### 5. Place chess piece on the board. 
+Place only black or white of one type of chess piece on the board each time. For one color, all type of chess piece has two pieces except king, so place two pieces at h1 and h2 and for king just place at h1. 
+### 6. Type in the `auto;`+`corresponding chess piece type letter`  in the expression
+For example, `auto;Q` is collecting the white queen's image data 
