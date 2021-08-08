@@ -161,7 +161,7 @@ $ rosrun robotiq_hande_ros_driver test.py
 ### 4. Camera calibration and hand-eye calibration
 **This step directly affects the pose estimation accuracy!\
 Do the calibration when switching the camera or changing the camera's focal length.**\
-Use [`camera_hand_eye_calibration`](https://github.com/xiaohuits/camera_hand_eye_calibration) to obtain the `camera_hand_eye_calibration.yaml` file. 
+Use [camera_hand_eye_calibration](https://github.com/xiaohuits/camera_hand_eye_calibration) to obtain the `camera_hand_eye_calibration.yaml` file. 
 It contains the camera calibration results as well as the hand-eye position.
 Copy the file and put it into `/robotic_chess_player/config` folder.
 
