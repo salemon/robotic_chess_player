@@ -214,6 +214,6 @@ $ rosrun rqt_service_caller t_service_caller
 ```
 ### 4. Change the server caller topic to `robot_service`, and type in the `locate chessboard` in the expression
 ### 5. Place chess piece on the board. 
-Place only black or white of one type of chess piece on the board each time. For one color, all type of chess piece has two pieces except king, so place two pieces at h1 and h2 and for king just place at h1. 
+Place only black or white of one type of chess piece on the board each time. All chess pieces have two pieces except the king for one color, so place two pieces at h1 and h2. When collecting the data for the king, just put it at h1.
 ### 6. Type in the `auto;`+`corresponding chess piece type letter`  in the expression
 For example, `auto;Q` is collecting the white queen's image data 
