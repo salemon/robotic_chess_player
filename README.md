@@ -7,7 +7,15 @@ robotic arm through visual information obtained from a camera to play physical c
 The challenges for robotic arms operating on a production line include **detection**, **decision**, and **reaction**. 
 These challenges are also in making a robotic arm playing chess.
 Therefore, developing a system to play chess can give an insight into solving the possible problem in
-the application of a robotic arm in a production line
+the application of a robotic arm in a production line.
+
+## Major functions and limitations
+1. **function:** able to detection the chessboard position on the workspace\
+**limitation:** the entire chessboard needs to be inside the view of the camera at the standby position and better not place any pieces on the board, otherwise the pose estimation may fail
+2. **function:** able to detection the chessboard state\
+**limitation:** the accuracy is 97% so the detection result at the beginning of the game needs human check. If the majority of a chess piece is not placed in the square the detection will fail 
+3. **function:** able to move the chess piece from start square to end square\
+**limitation:** The system cannot detection the exact position of a chess piece inside a square, so it cannot adjust its gripper accrodingly
 
 ## Hardware
 * Universal Robot UR5e collaborative robot
