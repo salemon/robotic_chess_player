@@ -147,7 +147,15 @@ Copy the file and paste it into `/robotic_chess_player/config` folder.
 ### 4. Chessboard's square length and compensation of z direction's error 
 * The currently used chessboard is 0.043 meters for each of its squares. 
 * The pose estimation result has a certain amount of error in the z-direction, so compensation needs to be added to the z-direction. The current compensation value is -0.156 meters. A more negative value means the gripper is raised further away from the chessboard surface and vice versa. 
-* The square's length and compensation are manually typed and saved in the `camera_hand_eye_calibration.yaml` file. **Please adjust them if a new chessboard is used. Remember, the unit is in meters.**
+* The square's length and compensation are manually typed and saved in the `camera_hand_eye_calibration.yaml` file. The format of saving these parameters is shown below.
+```
+parameter:
+  # chessboard square's length 
+  edge: 0.043
+  # compensation of pose estimation error in z direction
+  height: -0.156
+```
+**Please keep the format and adjust the values if a new chessboard is used. Remember, the unit is in meters.**
 * The process of getting the proper compensation value will be elaborated in the **Usage** section
 
 # Usage
