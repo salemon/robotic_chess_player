@@ -11,11 +11,11 @@ Developing this robotic system to play chess has given insights into solving pro
 
 ## Major functions and limitations
 1. **3D visual perception based on 2D imaging feedback:** able to detection the position and orientation of the chessboard in the workspace and on the fly\
-**limitation:** The entire chessboard needs to be inside the view of the camera at the standby position and better without any pieces on the board; otherwise the pose estimation may fail.
+**limitation:** The entire chessboard needs to be inside the view of the camera at the standby position and better without any pieces on the board. In other words, the robot needs to see the chessboard fully, otherwise the pose estimation may fail.
 2. **Visual situational awareness:** able to detection the chessboard state every time a player makes a move\
-**limitation:** The accuracy of the built-in neural network is 97%; the detection result at the beginning of the game needs human check: if the majority of a chess piece is poorly placed outside the containing square, the detection will fail.
+**limitation:** The accuracy of the built-in neural network is 97% so it is not bullet proof to errors; the detection result at the beginning of the game needs human check: if the majority of a chess piece is poorly placed outside the containing square, the detection will fail.
 3. **Physical manipulation intelligence:** able to move every chess piece from a start square to an end square at each step, and to compete against a human player with world-class chess analysis\
-**limitation:** The system cannot detection the exact position of a chess piece inside a square. All pieces are gripped in the same way.
+**limitation:** The system does not detect the exact position of a chess piece inside a square. All pieces are gripped in the same way.
 
 ## Hardware
 * Universal Robot UR5e collaborative robot
