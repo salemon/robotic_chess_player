@@ -92,11 +92,6 @@ $ cd catkin config -DPYTHON_EXECUTABLE=/usr/bin/python3 -DPYTHON_INCLUDE_DIR=/us
 $ catkin config --install
 $ catkin build cv_bridge
 ```
-* Source package
-```bash
-$ source install/setup.bash --extend
-$ echo "source install/setup.bash --extend" >> ~/.bashrc
-```
 
 ## Installation: Git clone packages and drivers for *UR5e robotic chess player*
 ```bash
@@ -118,29 +113,7 @@ $ catkin_make
 
 ## Setting Up
 
-### 1. Setting up the UR robot
-Please follow [this document](https://github.com/UniversalRobots/Universal_Robots_ROS_Driver/blob/master/ur_robot_driver/doc/install_urcap_e_series.md) to install the urcap needed to the robot and create the external control program.
-#### Update the calibration file
-This package use a [calibration file](https://github.com/macs-lab/robotic_chess_player/config/ur_calibration_correction.yaml) extracted from the the demo robot. It needs to be updated manually:
-```bash
-$ roslaunch ur_calibration calibration_correction.launch \
-  robot_ip:=<robot_ip> target_filename:="~/my_catkin_ws/src/robotic_chess_player/config/ur_calibration_correction.yaml"
-```
-where the `robot_ip` parameter is your UR5e's IP address inside [`robot_bringup.launch`](https://github.com/macs-lab/robotic_chess_player/launch/robot_bringup.launch) file.
-
-Now, the UR robot should be able to be controlled with ROS node. To test if the driver is working properly, do the following:
-* power up the robot and open the external control program.
-* ROS launch `robot_bringup.launch`:
-```bash
-$ roslaunch robotic_chess_player robot_bringup.launch
-```
-* Run the external control program on the robot
-* Use `rqt_trajectory_controller` to test if the driver is working properly.
-```bash
-$ rosrun rqt_trajectory_controller rqt_trajectory_controller
-```
-
-### 2. Setting up the camera driver
+### 1. Setting up the camera driver
 Make sure the `cam_IP` parameter in the camera launch file (robotic_chess_player/launch/camera_bringup_freerun.launch) match with the actual camera IP adress. 
 
 To test if the camera driver is working properly, do the following:
@@ -153,7 +126,7 @@ $ roslaunch robotic_chess_player camera_bringup_freerun.launch
 $ rosrun rqt_image_view rqt_image_view
 ```
 
-### 3. Setting up gripper controller
+### 2. Setting up gripper controller
 Go to `gripper_bringup.launch`, modify the parameter `robot_ip` to the actual IP address for the UR robot. 
 
 To test if the gripper controller is working properly, launch `gripper_bringup.launch` and run `test.py` inside the `robotiq_hande_ros_driver` pakcage.
@@ -165,14 +138,14 @@ $ rosrun robotiq_hande_ros_driver test.py
 # you should see the gripper moving.
 ```
 
-### 4. Camera calibration and hand-eye calibration
+### 3. Camera calibration and hand-eye calibration
 **This step directly affects the pose estimation accuracy!\
 Do the calibration when switching the camera or changing the camera's focal length.**\
 Use [camera_hand_eye_calibration](https://github.com/xiaohuits/camera_hand_eye_calibration) to obtain the `camera_hand_eye_calibration.yaml` file. 
 It contains the camera calibration results as well as the hand-eye position.
 Copy the file and put it into `/robotic_chess_player/config` folder.
 
-### 5. Chessboard's square length and compensation of z direction's error 
+### 4. Chessboard's square length and compensation of z direction's error 
 * The currently used chessboard is 0.043 meters for each of its squares. 
 * The pose estimation result has a certain amount of error in the z-direction, so compensation needs to be added to the z-direction. The current compensation value is -0.156 meters. A more negative value means the gripper is raised further away from the chessboard surface and vice versa. 
 * The square's length and compensation are manually typed and saved in the `camera_hand_eye_calibration.yaml` file. **Please adjust them if a new chessboard is used. Remember, the unit is in meters.**
@@ -180,12 +153,12 @@ Copy the file and put it into `/robotic_chess_player/config` folder.
 
 # Usage
 ## Start the entire system 
-### 1. Bring up UR5e robot driver
-* Power on the robot and load the installation on the robot's polyscope.
+### 1. Bring up the UR5e robot driver in lab B012
+* Power on the robot, which the robot's base is mounted on the workspace's surface and load the installation program on the robot's polyscope.
 * Open a terminal and initiate the driver by following the manual: [Running Universal_Robots_ROS_Driver in a separate machine](https://github.com/macs-lab/lab_doc/wiki/Running-Universal_Robots_ROS_Driver-in-a-separate-machine).
-* Run the external control program (external_control.urp) on the robot. Back to the terminal, you should see message similar to `robot is ready to receive control command`.
+* Run the external control program (external_control.urp) on the robot. Back to the terminal, you should see message similar to `robot is ready to receive control command`. If the polyscope does not have the external_control.urp in the folder, follow this instruction: [Installing a URCap on a e-Series robot](https://github.com/UniversalRobots/Universal_Robots_ROS_Driver/blob/master/ur_robot_driver/doc/install_urcap_e_series.md)
 
-### 2. Bring up the neural-network chess detection engine
+### 2. Bring up the neural-network chess detection system
 Open a new terminal, run:
 ```bash
 $ source ~/cvbridge_build_ws/install/setup.bash --extend
@@ -197,6 +170,7 @@ Open a new terminal, run:
 ```bash
 $ roslaunch robotic_chess_player entire_system_bringup.launch 
 ```
+
 ### 4. System instruction
 A GUI windonw will show up after finish step 3 and it looks like the image below.
 
@@ -204,8 +178,11 @@ A GUI windonw will show up after finish step 3 and it looks like the image below
 
 1. Before placing the chess pieces on the board, click first `Locate Chessboard` to estimate the chessboard pose relative to the robotic arm's base.
 2. Place the chess pieces on the board. The human player can now make a move. Then, click `Detect Chessboard` to detect the chessboard state. The result will be shown in the left dialog box.
-3. Enter false detections' square and correct piece type in the dialog box on the right and click `Correct Chessboard`. The formate of the comment is first to specify which square in lowercase, then press space, and enter the correct piece's type. Each type of chess piece is using one letter. Capital letter means white and lowercase letter represents black. Piece type: k(king), q(queen), r(rook), n(knight), b(bishop), p(pawn).
+3. Enter false detections' square and correct piece type in the dialog box on the right and click `Correct Chessboard`. This is needed for only when an error occurs. The formate of the comment is first to specify which square in lowercase, then press space, and enter the correct piece's type. Each type of chess piece is using one letter. Capital letter means white and lowercase letter represents black. Piece type: k(king), q(queen), r(rook), n(knight), b(bishop), p(pawn).
 4. Click `Confirm` to make the system search for the best chess move and perform that move through driving the robotic arm.
+
+### 5. Shut down process 
+To close the system, just go to every opened terminals from above steps and hit `Crtl+c`.
 
 ## Automatically collecting image data
 We built a feature to automatically image the chess board and chess pieces to collect data and train the neural network.
@@ -221,7 +198,7 @@ $ rosrun rqt_service_caller t_service_caller
 ``` 
 4. Change the server caller topic to `robot_service`, and type in `locate chessboard` in the expression.
 5. Place chess piece on the board. 
-Place only black or white of one type of chess piece on the board each time. All chess pieces have two pieces except the king for one color, so place two pieces at h1 and h2. When collecting the data for the king, just put it at h1.
+Place only black or white of one type of chess piece on the board each time. All chess pieces have two pieces except the king for one color, so place two pieces at square h1 and square h2. When collecting the data for the king, just put it at square h1.
 6. Type in `auto;`+`corresponding chess piece type letter`  in the expression
 For example, `auto;Q` is collecting the white queen's image data 
 
@@ -233,5 +210,5 @@ As we have mentioned earlier in Section 5 of the Setting Up section, the pose es
 4. Shut down the system and redo the steps above until getting a feasible value.
 
 # References
-- neural network engine:
+- neural network model: Pytorch provided Resnet-
 - chess analysis engine: we use the open-source Stockfish, a 10-time winner of the Top Chess Engine Championship.
