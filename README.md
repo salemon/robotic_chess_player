@@ -139,11 +139,10 @@ $ rosrun robotiq_hande_ros_driver test.py
 ```
 
 ### 3. Camera calibration and hand-eye calibration
-**This step directly affects the pose estimation accuracy!\
-Do the calibration when switching the camera or changing the camera's focal length.**\
+**This step directly affects the pose estimation accuracy! Do the calibration when switching the camera or changing the camera's focal length.**\
 Use [camera_hand_eye_calibration](https://github.com/xiaohuits/camera_hand_eye_calibration) to obtain the `camera_hand_eye_calibration.yaml` file. 
 It contains the camera calibration results as well as the hand-eye position.
-Copy the file and put it into `/robotic_chess_player/config` folder.
+Copy the file and paste it into `/robotic_chess_player/config` folder.
 
 ### 4. Chessboard's square length and compensation of z direction's error 
 * The currently used chessboard is 0.043 meters for each of its squares. 
@@ -182,7 +181,7 @@ A GUI windonw will show up after finish step 3 and it looks like the image below
 4. Click `Confirm` to make the system search for the best chess move and perform that move through driving the robotic arm.
 
 ### 5. Shut down process 
-To close the system, just go to every opened terminals from above steps and hit `Crtl+c`.
+To close the system, just go to every terminal which was opened by following the steps above and hit `Crtl+c`.
 
 ## Automatically collecting image data
 We built a feature to automatically image the chess board and chess pieces to collect data and train the neural network.
@@ -210,5 +209,5 @@ As we have mentioned earlier in Section 5 of the Setting Up section, the pose es
 4. Shut down the system and redo the steps above until getting a feasible value.
 
 # References
-- neural network model: Pytorch provided Resnet-
-- chess analysis engine: we use the open-source Stockfish, a 10-time winner of the Top Chess Engine Championship.
+- neural network model: we use the [transfer learning](https://pytorch.org/tutorials/beginner/transfer_learning_tutorial.html) technique to find-tuning the Pytorch pre-trained [Resnet-18](https://pytorch.org/vision/stable/models.html) with softmax fully connected layer. The neural network's parameter is saved in the `neural_net` folder.
+- chess analysis engine: we use the open-source [Stockfish](https://stockfishchess.org/) open source chess engine. The engine is saved in `chess__ai` folder
