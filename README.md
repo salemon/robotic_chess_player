@@ -5,7 +5,7 @@ The ***UR5e robotic chess player*** is an autonomous system that drives an indus
 robotic arm through visual information obtained from a camera to play physical chess against a human.
 
 The challenges for robotic arms operating on a production line include **detection**, **decision**, and **reaction**. 
-These challenges are amplified in making a robotic arm playing chess.
+These challenges are amplified in making a robotic arm that interactively plays chess with a human.
 Developing this robotic system to play chess has given insights into solving problems in
 [the application of robotic manipulators to manufacturing inspection](https://arminstitute.org/project-highlight-defect-inspection/).
 
