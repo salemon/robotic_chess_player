@@ -158,6 +158,14 @@ parameter:
 **Please keep the format and adjust the values if a new chessboard is used. Remember, the unit is in meters.**
 * The process of getting the proper compensation value will be elaborated in the **Usage** section
 
+### 5. Setting up the UR5e installation file
+The UR5e robot in MACS lab has already configured robot installation file that works with Hand-E gripper and ROS. If you want to create a new installation, do the following:
+
+* Go to installation tab (ref: UR5e user manual, section 16), configure the robot mounting, TCP and anyting that is revelent.
+* Configure the Ethernet IP for the robot. This IP will be used by robot ROS drive. Please note, the IP for your robot and PC should be in the same subnet.
+* Install the Robotiq hand-E urcaps. Refer to the hand-e user manual for detailed steps.
+* Finally, save the current installation files.
+
 # Usage
 ## Start the entire system 
 ### 1. Bring up the UR5e robot driver in lab B012
