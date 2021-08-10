@@ -127,9 +127,9 @@ $ rosrun rqt_image_view rqt_image_view
 ```
 
 ### 2. Setting up gripper controller
-Go to `gripper_bringup.launch`, modify the parameter `robot_ip` to the actual IP address for the UR robot. 
+Go to `gripper_bringup.launch`. Modify the parameter `robot_ip` to the actual IP address for the UR robot. 
 
-To test if the gripper controller is working properly, launch `gripper_bringup.launch` and run `test.py` inside the `robotiq_hande_ros_driver` pakcage.
+To test if the gripper controller is working properly, launch `gripper_bringup.launch` and run `test.py` inside the `robotiq_hande_ros_driver` pakcage:
 ```bash
 # launch gripper driver
 $ roslaunch robotiq_hande_ros_driver gripper_bringup.launch
@@ -141,11 +141,11 @@ $ rosrun robotiq_hande_ros_driver test.py
 ### 3. Camera calibration and hand-eye calibration
 **This step directly affects the pose estimation accuracy! Do the calibration when switching the camera or changing the camera's focal length.**\
 Use [camera_hand_eye_calibration](https://github.com/xiaohuits/camera_hand_eye_calibration) to obtain the `camera_hand_eye_calibration.yaml` file. 
-It contains the camera calibration results as well as the hand-eye position.
+This file contains the camera calibration results as well as the hand-eye pose.
 Copy the file and paste it into `/robotic_chess_player/config` folder.
 
 ### 4. Chessboard's square length and compensation of z direction's error 
-* The currently used chessboard is 0.043 meters for each of its squares. 
+* The currently used chessboard is 0.043 meters wide for each of its squares. 
 * The pose estimation result has a certain amount of error in the z-direction, so compensation needs to be added to the z-direction. The current compensation value is -0.156 meters. A more negative value means the gripper is raised further away from the chessboard surface and vice versa. 
 * The square's length and compensation are manually typed and saved in the `camera_hand_eye_calibration.yaml` file. The format of saving these parameters is shown below.
 ```
@@ -161,7 +161,7 @@ parameter:
 # Usage
 ## Start the entire system 
 ### 1. Bring up the UR5e robot driver in lab B012
-* Power on the robot, which the robot's base is mounted on the workspace's surface and load the installation program on the robot's polyscope.
+* Power on the robot, with the robot's base mounted on the workspace's surface. Load the installation program on the robot's polyscope.
 * Open a terminal and initiate the driver by following the manual: [Running Universal_Robots_ROS_Driver in a separate machine](https://github.com/macs-lab/lab_doc/wiki/Running-Universal_Robots_ROS_Driver-in-a-separate-machine).
 * Run the external control program (external_control.urp) on the robot. Back to the terminal, you should see message similar to `robot is ready to receive control command`. If the polyscope does not have the external_control.urp in the folder, follow this instruction: [Installing a URCap on a e-Series robot](https://github.com/UniversalRobots/Universal_Robots_ROS_Driver/blob/master/ur_robot_driver/doc/install_urcap_e_series.md)
 
@@ -193,7 +193,7 @@ To close the system, just go to every terminal which was opened by following the
 
 ## Automatically collecting image data
 We built a feature to automatically image the chess board and chess pieces to collect data and train the neural network.
-Here, the system positions the camera vertically and right above the center of the chessboard at a particular height to detect the chessboard state. The current automatically image collecting function also takes images at the same position.
+Here, the system positions the camera vertically and right above the center of the chessboard at a particular height to detect the chessboard state. The current automatic image collecting function also takes images at the same position.
 1. Bring up UR5e robot driver as shown before
 2. Roslaunch partial system:
 ```bash
@@ -217,5 +217,7 @@ As we have mentioned earlier in Section 5 of the Setting Up section, the pose es
 4. Shut down the system and redo the steps above until getting a feasible value.
 
 # References
-- neural network model: we use the [transfer learning](https://pytorch.org/tutorials/beginner/transfer_learning_tutorial.html) technique to find-tuning the Pytorch pre-trained [Resnet-18](https://pytorch.org/vision/stable/models.html) with softmax fully connected layer. The neural network's parameter is saved in the `neural_net` folder.
-- chess analysis engine: we use the open-source [Stockfish](https://stockfishchess.org/) open source chess engine. The engine is saved in `chess__ai` folder
+- neural network model: we use the [transfer learning](https://pytorch.org/tutorials/beginner/transfer_learning_tutorial.html) technique to finetune the Pytorch pre-trained [Resnet-18](https://pytorch.org/vision/stable/models.html) with softmax fully connected layer. The neural network's parameter is saved in the `neural_net` folder.
+- chess analysis engine: we use the award-winning open-source [Stockfish](https://stockfishchess.org/) chess engine. The engine is saved in the `chess__ai` folder.
+- Multiple motivations were drawn from the Gambit project: Matuszek, Cynthia, et al. "Gambit: An autonomous chess-playing robotic system." 2011 IEEE International Conference on Robotics and Automation, 2011. The Gambit project used 2D and depth cameras and a robot different from the UR5e used in this project. For detecting where the chessboard is in the image, it first detected the points and then found four chessboard corner points using the depth information and trained the RANSAC algorithm. For detecting the pieces on the chessboard, Gambit first used point clouds and depth information to find which square had points above it, and then it cropped the image and used more than one trained SVM algorithm to classify one image about which type and color this piece was. Our project used one 2D camera without the depth information throughout the process, and used one neural network over point clouds, depth information, and SVM. Another difference is the reserach on different lighting that is elaborated in Mingyu Wang's MS thesis.
+
