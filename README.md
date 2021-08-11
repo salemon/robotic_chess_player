@@ -158,18 +158,10 @@ parameter:
 **Please keep the format and adjust the values if a new chessboard is used. Remember, the unit is in meters.**
 * The process of getting the proper compensation value will be elaborated in the **Usage** section
 
-### 5. Setting up the UR5e installation file
-The UR5e robot in MACS lab has already configured robot installation file that works with Hand-E gripper and ROS. If you want to create a new installation, do the following:
-
-* Go to installation tab (ref: UR5e user manual, section 16), configure the robot mounting, TCP and anyting that is revelent.
-* Configure the Ethernet IP for the robot. This IP will be used by robot ROS drive. Please note, the IP for your robot and PC should be in the same subnet.
-* Install the Robotiq hand-E urcaps. Refer to the hand-e user manual for detailed steps.
-* Finally, save the current installation files.
-
 # Usage
 ## Start the entire system 
 ### 1. Bring up the UR5e robot driver in lab B012
-* Power on the robot, with the robot's base mounted on the workspace's surface. Load the installation program on the robot's polyscope.
+* Power on the robot, with the robot's base mounted on the workspace's surface. Load the installation program,`right_arm_ros_upright.installation`, on the robot's polyscope. For more detail information about how to load or create a new installation file, please check [Universal Robot e-Series User Manual, section 21, file manager](https://s3-eu-west-1.amazonaws.com/ur-support-site/40974/UR5e_User_Manual_en_US.pdf)
 * Open a terminal and initiate the driver by following the manual: [Running Universal_Robots_ROS_Driver in a separate machine](https://github.com/macs-lab/lab_doc/wiki/Running-Universal_Robots_ROS_Driver-in-a-separate-machine).
 * Run the external control program (external_control.urp) on the robot. Back to the terminal, you should see message similar to `robot is ready to receive control command`. If the polyscope does not have the external_control.urp in the folder, follow this instruction: [Installing a URCap on a e-Series robot](https://github.com/UniversalRobots/Universal_Robots_ROS_Driver/blob/master/ur_robot_driver/doc/install_urcap_e_series.md)
 
